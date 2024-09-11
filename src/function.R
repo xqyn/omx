@@ -1,18 +1,6 @@
 # Custumize function for DEseq2 and PCA
 library(ggplot2)
 
-#--------------------------------------------------
-# global varibles
-colours <- c("#1D263B","#E03E3E","#53BB79","#EF8228","#937264",
-            "#3043A2","#C25D7B","#D88C4C","dodgerblue","#FEB447",
-            "#06CDE0","#1498BE","#0D5B11", '#4c00b0', '#ffaf00')
-
-colour.hm <- c(brewer.pal(9,'Blues')[9:3],brewer.pal(9,'Reds')[3:9])
-
-colour_day <- c("#A6E0FF","#4DB1FF","#0070F2","#0040B0")
-colour_cell <- c("#1B90FF","#7858FF","#F31DED","#FA4F96")
-
-
 
 #--------------------------------------------------
 # return annotation UP and Down genes from DEseq2
@@ -81,6 +69,11 @@ volcano <- function(
 
 
 #--------------------------------------------------
+
+colours <- c("#1D263B","#E03E3E","#53BB79","#EF8228","#937264",
+            "#3043A2","#C25D7B","#D88C4C","dodgerblue","#FEB447",
+            "#06CDE0","#1498BE","#0D5B11", '#4c00b0', '#ffaf00')
+
 # PCA analysis
 pca_analysis <- function(
                   mtx,
@@ -88,11 +81,13 @@ pca_analysis <- function(
                   pca_title = NULL,
                   condition = NULL,
                   replicate = NULL,
+                  cond_title = 'feature1',
+                  rep_title = 'feature2',
                   ntop = 0.1,
                   scale.unit = FALSE,
                   ncp = 25,
                   fig_dir = NULL,
-                  colours = colours,
+                  colour_set = colours,
                   height = 6,
                   width = 7.5){
 
@@ -129,8 +124,8 @@ pca_analysis <- function(
     condition <- as.factor(condition)
     # print out the samples
     message('Run samples:', toString(sample))
-    message('Condition: ', toString(condition))
-    message('Replicate: ', toString(replicate))
+    message(cond_title, ': ', toString(condition))
+    message(rep_title, ': ', toString(replicate))
 
     # Determine the number of top variant variables
     ntop <- round(nrow(mtx)*ntop,0)                     # choose ntop % most variants
@@ -145,8 +140,8 @@ pca_analysis <- function(
     
     # PCA mtx and add infor from meta file to pca matrix
     pca <- as.data.frame(res.pca$ind$coord)
-    pca$cond <-  condition
-    pca$rep <-  replicate
+    pca[[cond_title]] <-  condition
+    pca[[rep_title]] <-  replicate
 
     # variances explain from PCA mtx
     var <- as.data.frame(res.pca$eig)
@@ -159,17 +154,24 @@ pca_analysis <- function(
     attri <- attri[order(attri$pc1, decreasing=TRUE),] # sort on pc1
     
     if (is.null(fig_dir)) {
-        message("Not saving pca figures")
+        message("Not saving figures")
     } else {
-        message("Ploting pca figures")
+        message("Ploting PCA figures...")
         # Plot
         ## PCA plot
-        plot_pca <- ggplot(pca, aes(x = Dim.1, y = Dim.2, colour = cond)) +
-                        geom_point(aes(shape=rep), size = 5, alpha=0.75, show.legend = TRUE) +
+        plot_pca <- ggplot(pca, aes(x = Dim.1, y = Dim.2)) +
+                        geom_point(aes(shape=.data[[rep_title]],
+                                    colour = .data[[cond_title]]), 
+                                    size = 5, 
+                                    alpha=0.75, 
+                                    show.legend = TRUE) +
                         labs(x = paste0("PC1: ", var$per_var[1], "%"),
-                            y = paste0("PC2: ", var$per_var[2], "%")) +
+                            y = paste0("PC2: ", var$per_var[2], "%"),
+                            color = cond_title,
+                            shape = rep_title
+                            ) +
                         scale_color_manual(values = colour_set) + 
-                        ggtitle(paste0('PCA analysis: ', pca_setting)) +
+                        ggtitle(paste0('PCA: ', pca_setting)) +
                         theme_minimal()
         ## save
         ggsave(paste0(fig_dir, pca_setting, '_pca.png'),

@@ -27,7 +27,7 @@ deg <- function(
     df_de$deg <- 'NO DE'                  # re-filter for no DEG
     df_de$deg[df_de$log2FoldChange > lfc & df_de$padj < padj] <- "UP"
     df_de$deg[df_de$log2FoldChange < -lfc & df_de$padj < padj] <- "DOWN"
-
+    df_de <- df_de[order(df_de$log2FoldChange, decreasing=TRUE),] 
     return(df_de)
 }
 
@@ -89,7 +89,8 @@ pca_analysis <- function(
                   fig_dir = NULL,
                   colour_set = colours,
                   height = 6,
-                  width = 7.5){
+                  width = 7.5,
+                  pdf = FALSE){
 
     #--------------------------------------------------
     #' PCA analysis
@@ -108,6 +109,7 @@ pca_analysis <- function(
     #' @param colours colour for conditions
     #' @param height height for PCA plot
     #' @param width width for PCA plot
+    #' @param pdf to print pdf format or not
     #'
     #' @return list of attributes for PCA: pca dataframe, variance explain, and attributes
     #--------------------------------------------------
@@ -152,6 +154,7 @@ pca_analysis <- function(
     attri <- as.data.frame(res.pca$var$contrib)
     colnames(attri) <- sub('Dim.','pc', colnames(attri))
     attri <- attri[order(attri$pc1, decreasing=TRUE),] # sort on pc1
+    attri_ori <- as.data.frame(res.pca$var$contrib)
     
     if (is.null(fig_dir)) {
         message("Not saving figures")
@@ -176,9 +179,11 @@ pca_analysis <- function(
         ## save
         ggsave(paste0(fig_dir, pca_setting, '_pca.png'),
             plot=plot_pca, bg = 'white', width=width, height=height, units="in", dpi=600)
-
+        if (pdf){
         ggsave(paste0(fig_dir, pca_setting, '_pca.pdf'),
             plot=plot_pca, bg = "white", width=width, height=height, units="in", dpi= 1200, device = cairo_pdf)
+            }
+            
 
         ## Varaince plot
         plot_var <- ggplot(var, aes(x = factor(1:nrow(var)), y = per_var)) +
@@ -190,10 +195,11 @@ pca_analysis <- function(
         ## save
         ggsave(paste0(fig_dir, pca_setting, '_pca_var.png'), 
             plot=plot_var, bg = 'white', width=6.5, height=6, units="in", dpi=600)
-        
-        ggsave(paste0(fig_dir, pca_setting, '_pca_var.pdf'), 
-            plot=plot_var, bg = "white", width=6.5, height=6,units="in", dpi= 1200, device = cairo_pdf)
+        if (pdf){
+            ggsave(paste0(fig_dir, pca_setting, '_pca_var.pdf'), 
+                plot=plot_var, bg = "white", width=6.5, height=6,units="in", dpi= 1200, device = cairo_pdf)
+                }
     }
     
-    return(list(pca = pca, var = var, attri = attri))  
+    return(list(pca = pca, var = var, attri = attri, attri_ori = attri_ori))  
   }

@@ -150,7 +150,7 @@ pca_analysis <- function(
     colnames(var) <- c('eigen', 'per_var', 'cumulative')
     var$per_var <- round(var$per_var,2)
     
-    ## fratures contribute to PC
+    # fratures contribute to PC
     attri <- as.data.frame(res.pca$var$contrib)
     colnames(attri) <- sub('Dim.','pc', colnames(attri))
     attri <- attri[order(attri$pc1, decreasing=TRUE),] # sort on pc1
@@ -160,8 +160,7 @@ pca_analysis <- function(
         message("Not saving figures")
     } else {
         message("Ploting PCA figures...")
-        # Plot
-        ## PCA plot
+        # PCA plot
         plot_pca <- ggplot(pca, aes(x = Dim.1, y = Dim.2)) +
                         geom_point(aes(shape=.data[[rep_title]],
                                     colour = .data[[cond_title]]), 
@@ -176,16 +175,16 @@ pca_analysis <- function(
                         scale_color_manual(values = colour_set) + 
                         ggtitle(paste0('PCA: ', pca_setting)) +
                         theme_minimal()
-        ## save
+        # save
         ggsave(paste0(fig_dir, pca_setting, '_pca.png'),
             plot=plot_pca, bg = 'white', width=width, height=height, units="in", dpi=600)
-        if (pdf){
+        if (pdf == TRUE){
         ggsave(paste0(fig_dir, pca_setting, '_pca.pdf'),
             plot=plot_pca, bg = "white", width=width, height=height, units="in", dpi= 1200, device = cairo_pdf)
             }
             
 
-        ## Varaince plot
+        # Varaince plot
         plot_var <- ggplot(var, aes(x = factor(1:nrow(var)), y = per_var)) +
                         geom_bar(stat = "identity") +
                         labs(x = "PC", 
@@ -195,7 +194,7 @@ pca_analysis <- function(
         ## save
         ggsave(paste0(fig_dir, pca_setting, '_pca_var.png'), 
             plot=plot_var, bg = 'white', width=6.5, height=6, units="in", dpi=600)
-        if (pdf){
+        if (pdf == TRUE) {
             ggsave(paste0(fig_dir, pca_setting, '_pca_var.pdf'), 
                 plot=plot_var, bg = "white", width=6.5, height=6,units="in", dpi= 1200, device = cairo_pdf)
                 }

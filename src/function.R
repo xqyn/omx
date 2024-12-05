@@ -150,11 +150,15 @@ pca_analysis <- function(
     colnames(var) <- c('eigen', 'per_var', 'cumulative')
     var$per_var <- round(var$per_var,2)
     
-    # fratures contribute to PC
+    # features contribute to PC
     attri <- as.data.frame(res.pca$var$contrib)
     colnames(attri) <- sub('Dim.','pc', colnames(attri))
     attri <- attri[order(attri$pc1, decreasing=TRUE),] # sort on pc1
     attri_ori <- as.data.frame(res.pca$var$contrib)
+
+    # loadings 
+    loadings <- as.data.frame(res.pca$var$coord)
+    colnames(loadings) <- sub('Dim.','pc', colnames(loadings))
     
     if (is.null(fig_dir)) {
         message("Not saving figures")
@@ -200,5 +204,5 @@ pca_analysis <- function(
                 }
     }
     
-    return(list(pca = pca, var = var, attri = attri, attri_ori = attri_ori))  
+    return(list(pca = pca, var = var, attri = attri, attri_ori = attri_ori, loadings = loadings))  
   }

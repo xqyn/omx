@@ -1,6 +1,17 @@
-# Custumize function for DEseq2 and PCA
-library(ggplot2)
+check_load <- function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    message(paste("Package", pkg, "is not installed. Installing now..."))
+    install.packages(pkg, dependencies = TRUE)
+  }
+  
+  # Load the package silently
+  suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+  message(paste("Package", pkg, "loaded successfully."))
+}
 
+# Custumize function for DEseq2 and PCA
+check_load('docstring')
+check_load('ggplot2')
 
 #--------------------------------------------------
 # return annotation UP and Down genes from DEseq2
@@ -70,9 +81,9 @@ volcano <- function(
 
 #--------------------------------------------------
 
-colours <- c("#1D263B","#E03E3E","#53BB79","#EF8228","#937264",
-            "#3043A2","#C25D7B","#D88C4C","dodgerblue","#FEB447",
-            "#06CDE0","#1498BE","#0D5B11", '#4c00b0', '#ffaf00')
+# colours <- c("#1D263B","#E03E3E","#53BB79","#EF8228","#937264",
+#             "#3043A2","#C25D7B","#D88C4C","dodgerblue","#FEB447",
+#             "#06CDE0","#1498BE","#0D5B11", '#4c00b0', '#ffaf00')
 
 # PCA analysis
 pca_analysis <- function(
@@ -87,7 +98,7 @@ pca_analysis <- function(
                   scale.unit = FALSE,
                   ncp = 25,
                   fig_dir = NULL,
-                  colour_set = colours,
+                  colour_set = NULL,
                   height = 6,
                   width = 7.5,
                   pdf = FALSE){

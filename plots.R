@@ -5,21 +5,47 @@ library(dendsort)
 library(RColorBrewer)
 
 #--------------------------------------------------
-bar_plot <- function(df, gene = 'PKP2'){
-  df_gene <- df_protein[which(df_protein$genes == gene),samples]
-  df_gene <- as.data.frame(t(df_gene))
-  colnames(df_gene) <- gene
-  df_gene$samples <- factor(rownames(df_gene), levels=samples)
-  # plot 
-  plot <- ggplot(df_gene, aes(x=samples, y=!!sym(gene))) +
-    geom_bar(stat = 'identity', fill = 'royalblue')+
-    theme_minimal() +
-    xlab('Samples') +
-    ylab('Protein abundance') +
-    ggtitle(gene)
-  return(plot)
+bar_plot <- function(
+    data_frame,
+    target_gene = 'PKP2',
+    bar_fill = bar_color,
+    plot_width = 8,
+    plot_height = 6
+) {
+    #--------------------------------------------------
+    #' Bar plot generation for protein abundance
+    #'
+    #' Creates a bar plot showing protein abundance across samples for a specific gene
+    #'
+    #' @param data_frame Input data frame containing protein expression data
+    #' @param target_gene Gene symbol to plot (default: 'PKP2')
+    #' @param bar_fill Color for the bars (default: royalblue)
+    #' @param plot_width Width of the plot in inches (default: 8)
+    #' @param plot_height Height of the plot in inches (default: 6)
+    #'
+    #' @return ggplot2 bar plot object
+    #--------------------------------------------------
+    
+    # Extract data for the specified gene
+    gene_data <- data_frame[which(data_frame$genes == target_gene), samples]
+    gene_data <- as.data.frame(t(gene_data))
+    colnames(gene_data) <- target_gene
+    gene_data$samples <- factor(rownames(gene_data), levels = samples)
+    
+    # Generate the bar plot
+    plot <- ggplot(gene_data, 
+                  aes(x = samples, y = !!sym(target_gene))) +
+        geom_bar(stat = 'identity', fill = bar_fill) +
+        theme_minimal() +
+        xlab('Samples') +
+        ylab('Protein abundance') +
+        ggtitle(target_gene)
+    
+    # Set plot dimensions
+    ggsave(plot, width = plot_width, height = plot_height)
+    
+    return(plot)
 }
-
 
 #--------------------------------------------------
 # Making heatmap

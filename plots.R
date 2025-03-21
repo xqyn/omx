@@ -55,6 +55,7 @@ heatmap_cm <- function(
                 hm_setting = 'hm_setting',
                 hm_title = NULL,
                 top_anno_fig = NULL,
+                left_anno_fig = NULL,
                 ntop = 2000,
                 colour_hm = colour.hm,
                 fig_dir = NULL,
@@ -76,6 +77,7 @@ heatmap_cm <- function(
     #' @param hm_setting naming the heatmap run
     #' @param hm_title naming  title when plotting
     #' @param top_anno_fig HeatmapAnnotation objects
+    #' @param left_anno_fig HeatmapAnnotation objects
     #' @param replicate sample replicates
     #' @param ntop percentage of top variants
     #' @param colour_hm colour heatmap
@@ -106,7 +108,7 @@ heatmap_cm <- function(
     
 
     # plot heatmap
-    plot_vsd_hm <- Heatmap(vsd_hm_scale, name = paste("ATAC-seq - ", hm_setting),
+    plot_vsd_hm <- Heatmap(vsd_hm_scale, name = paste(hm_setting, '_', nrow(vsd_hm_scale)),
                         col = colour_hm,
                         cluster_columns=cluster_columns,
                         cluster_rows = cluster_rows,
@@ -123,6 +125,7 @@ heatmap_cm <- function(
                         #row_split = km,
                         #row_title = NULL,
                         top_annotation = top_anno_fig,
+                        left_annotation = left_anno_fig,
                         heatmap_width = unit(width, "in"), 
                         heatmap_height = unit(height, "in")
                         )

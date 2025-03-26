@@ -65,7 +65,8 @@ heatmap_cm <- function(
                 cluster_rows = TRUE,
                 show_column_names = FALSE,
                 show_row_names = FALSE,
-                kmeans = 1
+                kmeans = 1,
+                cluster = FALSE  # New parameter
                 ){
     
     #--------------------------------------------------
@@ -78,17 +79,17 @@ heatmap_cm <- function(
     #' @param hm_title naming  title when plotting
     #' @param top_anno_fig HeatmapAnnotation objects
     #' @param left_anno_fig HeatmapAnnotation objects
-    #' @param replicate sample replicates
     #' @param ntop percentage of top variants
     #' @param colour_hm colour heatmap
     #' @param fig_dir saving directory for figures
-    #' @param colours colour for conditions
     #' @param height height for heatmap plot
     #' @param width width for heatmap plot
     #' @param show_column_names columnnames
     #' @param show_row_names row names
+    #' @param kmeans number of k-means clusters
+    #' @param cluster logical, whether to return row clusters
     #'
-    #' @return heatmap objects
+    #' @return heatmap object (and optionally row clusters if cluster = TRUE)
     #--------------------------------------------------
 
     #if (is.null(figure_dir)) stop("Please provide a colour heatmap.")
@@ -106,9 +107,10 @@ heatmap_cm <- function(
     vsd_hm <- object[top1_var,]
     vsd_hm_scale <- t(scale(t(vsd_hm)))    # scale
     
-
+    set.seed(920)
     # plot heatmap
-    plot_vsd_hm <- Heatmap(vsd_hm_scale, name = paste(hm_setting, '_', nrow(vsd_hm_scale)),
+    plot_vsd_hm <- Heatmap(vsd_hm_scale, 
+                        name = paste(hm_setting, '_', nrow(vsd_hm_scale)),
                         col = colour_hm,
                         cluster_columns=cluster_columns,
                         cluster_rows = cluster_rows,
@@ -129,22 +131,41 @@ heatmap_cm <- function(
                         heatmap_width = unit(width, "in"), 
                         heatmap_height = unit(height, "in")
                         )
-    if (is.null(fig_dir)) {
-        message("Not saving figures")
-        } else {
-        png_path <- paste0(figure_dir, hm_setting, '_heatmap_top_', as.character(ntop), '.png')
-        pdf_path <- paste0(figure_dir, hm_setting, '_heatmap_top_', as.character(ntop), '.pdf')
-        png(png_path, width=width+4, height=height+2, units="in", res=320)
+                        
+    plot_vsd_hm <- draw(plot_vsd_hm, merge_legend = TRUE, 
+                        heatmap_legend_side = "right", 
+                        annotation_legend_side = "bottom")
+    # Save figures if fig_dir is provided
+    if (!is.null(fig_dir)) {
+        png_path <- paste0(fig_dir, hm_setting, '_heatmap_top_', as.character(ntop), '.png')
+        pdf_path <- paste0(fig_dir, hm_setting, '_heatmap_top_', as.character(ntop), '.pdf')
+        png(png_path, width = width + 4, height = height + 2, units = "in", res = 320)
         draw(plot_vsd_hm, merge_legend = TRUE, 
-              heatmap_legend_side = "right", 
-              annotation_legend_side = "bottom")
+             heatmap_legend_side = "right", 
+             annotation_legend_side = "bottom")
         dev.off()
         
-        pdf(pdf_path, width+4, height=height+2)
+        pdf(pdf_path, width + 4, height = height + 2)
         draw(plot_vsd_hm, merge_legend = TRUE, 
-              heatmap_legend_side = "right", 
-              annotation_legend_side = "bottom")
-        dev.off()}
+             heatmap_legend_side = "right", 
+             annotation_legend_side = "bottom")
+        dev.off()
+    } else {
+        message("Not saving figures")
+    }
     
-    return(plot_vsd_hm)
+    # If cluster = TRUE, compute and return row clusters as a table
+    if (cluster) {
+        row_clusters <- row_order(plot_vsd_hm)
+        row_names <- rownames(vsd_hm_scale)
+        # Create a data frame: row names and their cluster assignments
+        cluster_table <- data.frame(
+            Row.names = unlist(lapply(row_clusters, function(x) row_names[x])),
+            Cluster = rep(names(row_clusters), times = sapply(row_clusters, length)),
+            stringsAsFactors = FALSE
+        )
+        return(list(heatmap = plot_vsd_hm, clusters = cluster_table))
+    } else {
+        return(plot_vsd_hm)
+    }
 }

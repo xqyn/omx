@@ -26,19 +26,19 @@ if (.Platform$OS.type == "unix" && Sys.info()["sysname"] == "Linux") {
     return(bytes)
   }
    
-  # Check environment variables for assigned resources
-  assigned_cores <- Sys.getenv("SLURM_JOB_CPUS_PER_NODE")  # For Slurm
-  if (assigned_cores == "") {
-    assigned_cores <- Sys.getenv("PBS_NP")  # For PBS
-  }
-  if (assigned_cores == "") {
-    assigned_cores <- Sys.getenv("LSB_DJOB_NUMPROC")  # For LSF
+# Get assigned cores with better error handling
+  get_cores <- function() {
+    cores <- Sys.getenv("SLURM_JOB_CPUS_PER_NODE")
+    if (cores == "") cores <- Sys.getenv("PBS_NP")
+    if (cores == "") cores <- Sys.getenv("LSB_DJOB_NUMPROC")
+    if (cores == "") {
+      return(parallel::detectCores(logical = FALSE))
+    }
+    as.numeric(cores)
   }
   
-  # If no specific environment variable, fall back to detectCores()
-  if (assigned_cores == "") {
-    assigned_cores <- parallel::detectCores(logical = FALSE)  # Only physical cores
-  }
+  # Resource settings
+  assigned_cores <- get_cores()
 
 
   # Setting core --------------------------------------------------
@@ -58,7 +58,7 @@ if (.Platform$OS.type == "unix" && Sys.info()["sysname"] == "Linux") {
   if (!is.na(core)) {
     rlimit_core(core)
   }
-  #print(rlimit_all())
+  print(rlimit_all())
 
   # Register for parallel processing
   if (is.na(core) || core < 1) {
@@ -70,23 +70,23 @@ if (.Platform$OS.type == "unix" && Sys.info()["sysname"] == "Linux") {
   }
   
   
-  # # Memory: Checking available memory from /proc/meminfo
-  # MemTotal <- as.numeric(system("awk '/MemTotal/ {print $2}' /proc/meminfo", intern = TRUE))
-  #   # Convert to GB (just once)
-  # MemTotal <- bytes_to_gb(MemTotal * 1024) # Convert KB to bytes then to GB
-  # cat('MemTotal: ', round(MemTotal, 2), ' GB', '\n')
+  # Memory: Checking available memory from /proc/meminfo
+  MemTotal <- as.numeric(system("awk '/MemTotal/ {print $2}' /proc/meminfo", intern = TRUE))
+    # Convert to GB (just once)
+  MemTotal <- bytes_to_gb(MemTotal * 1024) # Convert KB to bytes then to GB
+  cat('MemTotal: ', round(MemTotal, 2), ' GB', '\n')
 
-  # # Memory: Checking available memory from /proc/meminfo
-  # MemFree <- as.numeric(system("awk '/MemFree/ {print $2}' /proc/meminfo", intern = TRUE))
-  #  # Convert to GB (just once)
-  # MemFree <- bytes_to_gb(MemFree * 1024) # Convert KB to bytes then to GB
-  # cat('MemFree: ', round(MemFree, 2), ' GB', '\n')
+  # Memory: Checking available memory from /proc/meminfo
+  MemFree <- as.numeric(system("awk '/MemFree/ {print $2}' /proc/meminfo", intern = TRUE))
+   # Convert to GB (just once)
+  MemFree <- bytes_to_gb(MemFree * 1024) # Convert KB to bytes then to GB
+  cat('MemFree: ', round(MemFree, 2), ' GB', '\n')
 
-  #   # Memory: Checking available memory from /proc/meminfo
-  # MemAvailable <- as.numeric(system("awk '/MemAvailable/ {print $2}' /proc/meminfo", intern = TRUE))
-  #  # Convert to GB (just once)
-  # MemAvailable <- bytes_to_gb(MemAvailable * 1024) # Convert KB to bytes then to GB
-  # cat('MemAvailable: ', round(MemAvailable, 2), ' GB', '\n')
+    # Memory: Checking available memory from /proc/meminfo
+  MemAvailable <- as.numeric(system("awk '/MemAvailable/ {print $2}' /proc/meminfo", intern = TRUE))
+   # Convert to GB (just once)
+  MemAvailable <- bytes_to_gb(MemAvailable * 1024) # Convert KB to bytes then to GB
+  cat('MemAvailable: ', round(MemAvailable, 2), ' GB', '\n')
 } else {
   print("This script is designed to run on Linux only.")
 }
@@ -123,4 +123,4 @@ check_system_resources <- function() {
 }
 
 # Call the function
-check_system_resources()
+#check_system_resources()

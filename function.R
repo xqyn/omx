@@ -10,7 +10,7 @@ check_load <- function(pkg) {
 }
 
 # Custumize function for DEseq2 and PCA
-check_load('docstring')
+#check_load('docstring')
 check_load('ggplot2')
 
 #--------------------------------------------------

@@ -1,6 +1,6 @@
 # """
 # Project: track_genome
-# April - XQ - LUMC
+# April 2025 - XQ - LUMC
 # visualization of genomic regions in R
 # """
 
@@ -8,65 +8,70 @@
 # april 3, 2025 
 # --------------------------------------------------
 chr_region <- function(region_string, flank_left = 0, flank_right = NULL) {
-  #--------------------------------------------------
-  #' Extract genomic region and apply flanking
-  #'
-  #' Given a region: chr:start-end string,
-  #' applies left and right flanking, and returns a GRanges object
-  #' representing the modified region with flanks.
-  #'
-  #' @param region_string Genomic region in "chr:start-end" format
-  #' @param flank_left Number of bases to extend on the left
-  #' @param flank_right Number of bases to extend on the right
-  #'
-  #' @return A GRanges object containing the modified genomic region
-  #'         with the applied flanking regions.
-  #--------------------------------------------------
+    #--------------------------------------------------
+    #' Extract genomic region and apply flanking
+    #'
+    #' Given a region: chr:start-end string,
+    #' applies left and right flanking, and returns a GRanges object
+    #' representing the modified region with flanks.
+    #'
+    #' @param region_string Genomic region in "chr:start-end" format
+    #' @param flank_left Number of bases to extend on the left
+    #' @param flank_right Number of bases to extend on the right
+    #'
+    #' @return A GRanges object containing the modified genomic region
+    #'         with the applied flanking regions.
+    #--------------------------------------------------
+    # Check if region_string is provided
+    if (is.null(region_string)) stop("Please provide a valid 'region_string' in the format 'chr:start-end'.")
+    if (is.null(flank_right)) flank_right <- flank_left
 
-  if (is.null(flank_right)) flank_right <- flank_left
+    # Split region string and parse components
+    region_parts <- strsplit(region_string, "[:-]")[[1]]
+    chr <- region_parts[1]
+    start <- as.numeric(region_parts[2])
+    end <- as.numeric(region_parts[3])
 
-  # Split region string and parse components
-  region_parts <- strsplit(region_string, "[:-]")[[1]]
-  chr <- region_parts[1]
-  start <- as.numeric(region_parts[2])
-  end <- as.numeric(region_parts[3])
+    # Construct GRanges object
+    region <- GRanges(
+        seqnames = chr,
+        ranges = IRanges(start = start - flank_left, end = end + flank_right)
+    )
 
-  # Construct GRanges object
-  region <- GRanges(
-    seqnames = chr,
-    ranges = IRanges(start = start - flank_left, end = end + flank_right)
-  )
-
-  cat(sprintf("chr: %s  start: %d  end: %d\n", chr, start - flank_left, end + flank_right))
-  return(region)
+    cat(sprintf("chr: %s  start: %d  end: %d\n", chr, start - flank_left, end + flank_right))
+    return(region)
 }
 
 
 # --------------------------------------------------
-granges_to_string <- function(granges_obj) {
+granges_to_string <- function(granges_obj, sep = ":") {
     #--------------------------------------------------
-    #' Convert GRanges object to chr:start-end string
+    #' Convert GRanges object to a formatted string.
     #'
     #' Given a GRanges object, this function extracts the chromosome, start, and end positions,
-    #' and returns a string in the "chr:start-end" format.
+    #' and returns a string with a custom separator in the "chr:start-end" format (or custom separator).
     #'
     #' @param granges_obj A GRanges object that contains genomic ranges.
     #'                    The object should have seqnames (chromosome), start, and end values.
+    #' @param sep A character string used as the separator between the chromosome, start, and end values.
+    #'            Default is ":". You can pass other separators like "_", "-", etc.
     #'
-    #' @return A character string in the format "chr:start-end" representing the genomic region.
+    #' @return A character string representing the genomic region, formatted as "chr:start-end" or
+    #'         using the specified separator.
     #--------------------------------------------------
 
     # Check if the input is a GRanges object
     if (!inherits(granges_obj, "GRanges")) {
         stop("The provided object is not a GRanges object.")
-        }
+    }
+    
     # Extract chromosome, start, and end
     chr <- as.character(seqnames(granges_obj))
     start <- start(granges_obj)
     end <- end(granges_obj)
     
-    # Return the region as a chr:start-end string
-    region_string <- paste(chr, start, end, sep=":")
+    # Return the region as a chr:start-end string or using the custom separator
+    region_string <- paste(chr, start, end, sep = sep)
     return(region_string)
 }
 

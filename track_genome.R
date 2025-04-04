@@ -1,55 +1,48 @@
 # """
 # Project: track_genome
-# XQ - LUMC
+# April - XQ - LUMC
 # visualization of genomic regions in R
 # """
 
 
 # april 3, 2025 
 # --------------------------------------------------
+chr_region <- function(region_string, flank_left = 0, flank_right = NULL) {
+  #--------------------------------------------------
+  #' Extract genomic region and apply flanking
+  #'
+  #' Given a region: chr:start-end string,
+  #' applies left and right flanking, and returns a GRanges object
+  #' representing the modified region with flanks.
+  #'
+  #' @param region_string Genomic region in "chr:start-end" format
+  #' @param flank_left Number of bases to extend on the left
+  #' @param flank_right Number of bases to extend on the right
+  #'
+  #' @return A GRanges object containing the modified genomic region
+  #'         with the applied flanking regions.
+  #--------------------------------------------------
 
-chr_region <- function(region_string, 
-                       flank_left = 0, 
-                       flank_right = NULL) {
+  if (is.null(flank_right)) flank_right <- flank_left
 
-    #--------------------------------------------------
-    #' Extract genomic region and apply flanking
-    #'
-    #' Given a region: chr:start:end string,
-    #' applies left and right flanking, and returns a GRanges object
-    #' representing the modified region with flanks.
-    #'
-    #' @param region_string Genomic region in "chr:start-end" format
-    #' @param flank_left Number of bases to extend on the left
-    #' @param flank_right Number of bases to extend on the right
-    #'
-    #' @return A GRanges object containing the modified genomic region
-    #'         with the applied flanking regions.
-    #--------------------------------------------------
+  # Split region string and parse components
+  region_parts <- strsplit(region_string, "[:-]")[[1]]
+  chr <- region_parts[1]
+  start <- as.numeric(region_parts[2])
+  end <- as.numeric(region_parts[3])
 
-    # Extract chromosome, start, and end from the input string
-    region_parts <- strsplit(region_string, ":|-")[[1]]
-
-    chr <- region_parts[1]
-    start <- as.numeric(region_parts[2])
-    end <- as.numeric(region_parts[3])
-
-    # If flank_right is NULL, set it to be equal to flank_left
-    if (is.null(flank_right)) {
-    flank_right <- flank_left
-    }
-
-    # Create the GRanges object with flanking regions
-    region <- GRanges(
+  # Construct GRanges object
+  region <- GRanges(
     seqnames = chr,
-    ranges = IRanges(start = start - flank_left, 
-                    end = end + flank_right))
+    ranges = IRanges(start = start - flank_left, end = end + flank_right)
+  )
 
-    return(region)
+  cat(sprintf("chr: %s  start: %d  end: %d\n", chr, start - flank_left, end + flank_right))
+  return(region)
 }
 
-# --------------------------------------------------
 
+# --------------------------------------------------
 granges_to_string <- function(granges_obj) {
     #--------------------------------------------------
     #' Convert GRanges object to chr:start-end string
@@ -75,6 +68,69 @@ granges_to_string <- function(granges_obj) {
     # Return the region as a chr:start-end string
     region_string <- paste(chr, start, end, sep=":")
     return(region_string)
+}
+
+
+# --------------------------------------------------
+process_bigwig_data <- function(bw_files, 
+                               region_str = "X:73851081-73851581",
+                               flank_left = 2000, 
+                               flank_right = NULL, 
+                               mapping = NULL) {
+  
+    #' Process BigWig files into a merged data frame
+    #'
+    #' This function takes a set of BigWig files, imports them as GRanges objects for a specified
+    #' genomic region with flanking regions, converts them to data frames, and optionally
+    #' merges them with a mapping data frame.
+    #'
+    #' @param bw_files Character vector of paths to BigWig files to be processed
+    #' @param region_str Character string specifying the genomic region in "chr:start-end" format
+    #'                   (default: "X:73851081-73851581")
+    #' @param flank_left Integer specifying the left flanking region size in base pairs (default: 2000)
+    #' @param flank_right Integer specifying the right flanking region size in base pairs 
+    #'                    (default: NULL, which sets it equal to flank_left)
+    #' @param mapping Optional data frame containing mapping information to merge with the processed data
+    #'
+    #' @return A data frame containing the combined data from all BigWig files,
+    #'         optionally merged with mapping information if provided
+    #'
+    #' @importFrom rtracklayer import
+    #' @importFrom GenomicRanges GRanges
+    #' @importFrom IRanges IRanges
+    #' @importFrom tools file_path_sans_ext
+    
+    #--- create genomic region with flanks
+    message("creating genomic region with flanks...")
+    region <- chr_region(region_str, flank_left, flank_right)
+
+    #--- import BigWig files as GRanges objects
+    message("importing BigWig files...")
+    rg_vars <- lapply(bw_files, function(bw_file) {
+                        rtracklayer::import(bw_file, 
+                                            which = region, 
+                                            as = "GRanges")
+    })
+
+    #--- name the GRanges list using file names without extensions
+    message("naming GRanges list using file names...")
+    names(rg_vars) <- sub("\\..*", "", basename(bw_files))
+
+    #--- convert GRanges to data frame with source identifier
+    message("converting GRanges to data frame...")
+    combined_df <- do.call(rbind, lapply(names(rg_vars), function(name) {
+        df <- as.data.frame(rg_vars[[name]])
+        df$code <- name
+        return(df)
+    }))
+
+    #--- Merge with mapping data frame if provided
+    message("merging with mapping...")
+    if (!is.null(mapping)) {
+    combined_df <- merge(combined_df, mapping, by = "code", all.x = TRUE)
+    }
+
+    return(combined_df)
 }
 
 

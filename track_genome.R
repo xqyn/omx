@@ -6,7 +6,7 @@
 
 
 # april 3, 2025 
-# --------------------------------------------------
+# chr_region --------------------------------------------------
 chr_region <- function(region_string, flank_left = 0, flank_right = NULL) {
     #--------------------------------------------------
     #' Extract genomic region and apply flanking
@@ -43,7 +43,7 @@ chr_region <- function(region_string, flank_left = 0, flank_right = NULL) {
 }
 
 
-# --------------------------------------------------
+# granges_to_string --------------------------------------------------
 granges_to_string <- function(granges_obj, sep = ":") {
     #--------------------------------------------------
     #' Convert GRanges object to a formatted string.
@@ -76,7 +76,7 @@ granges_to_string <- function(granges_obj, sep = ":") {
 }
 
 
-# --------------------------------------------------
+# process_bigwig_data --------------------------------------------------
 process_bigwig_data <- function(bw_files, 
                                region_str = "X:73851081-73851581",
                                flank_left = 2000, 
@@ -139,8 +139,7 @@ process_bigwig_data <- function(bw_files,
 }
 
 
-# --------------------------------------------------
-printf <- function(...) invisible(print(sprintf(...)))
+# bed_region --------------------------------------------------
 bed_region <- function(region_string=NULL, 
                     flank_left=0, 
                     flank_right=NULL, 
@@ -187,7 +186,6 @@ bed_region <- function(region_string=NULL,
     start <- as.numeric(region_parts[2])
     end <- as.numeric(region_parts[3])
     
-    printf("chr: %s  start: %d  end: %d\n", chr, start, end)
     # If flank_right is NULL, set it to be equal to flank_left
     if (is.null(flank_right)) {
     flank_right <- flank_left}
@@ -219,7 +217,6 @@ bed_region <- function(region_string=NULL,
     # Clean up temporary files
     #file.remove(temp_region_file)
     #file.remove(temp_file)
-
     
     # Convert to GRanges object
     region <- GRanges(
@@ -230,28 +227,4 @@ bed_region <- function(region_string=NULL,
     return(filtered_data)
 }
 
-# --------------------------------------------------
-spacing <- function(df) {
-    #--------------------------------------------------
-    #' adding spaceing between genomics region
 
-    #--------------------------------------------------
-    n <- nrow(df) 
-    # Define the spacing based on steps of 5
-    if (n >= 1 && n <= 100) {
-    # calculate which 5-unit range n falls into
-    range_idx <- ceiling(n / 5)  
-
-    # Assign spacing based on a progression
-    # Example: Start at 0.5, increase by 0.25 every 5 rows
-    base_spacing <- 0.25 * (range_idx - 1) + 0.5
-
-    # Cap spacing at a reasonable maximum, e.g., 5
-    spacing <- pmin(base_spacing, 5)
-    } else {
-    spacing <- c(NA, NA)  # Outside 1-100 range
-    message(" Reduce number of genes in the region")
-    }
-
-    return(spacing)
-}

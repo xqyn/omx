@@ -140,11 +140,13 @@ process_bigwig_data <- function(bw_files,
 
 
 # --------------------------------------------------
+printf <- function(...) invisible(print(sprintf(...)))
 bed_region <- function(region_string=NULL, 
                     flank_left=0, 
                     flank_right=NULL, 
                     bed_file=NULL,
-                    bedtools_path=NULL) {
+                    bedtools_path=NULL,
+                    tmp_dir = "./tmp/") {
     
     #--------------------------------------------------
     #' Extract genomic region and apply flanking
@@ -176,8 +178,8 @@ bed_region <- function(region_string=NULL,
     #     stop("Invalid 'region_string' format. It should be in the 'chr:start-end' format.")}
 
     # Check if the region is a GRanges object
-    if (inherits(region, "GRanges")) {
-        region_string <- granges_to_string(region)    }
+    if (inherits(region_string, "GRanges")) {
+        region_string <- granges_to_string(region_string)    }
 
     # Extract chromosome, start, and end from the input string
     region_parts <- strsplit(region_string, ":|-")[[1]]
@@ -185,31 +187,39 @@ bed_region <- function(region_string=NULL,
     start <- as.numeric(region_parts[2])
     end <- as.numeric(region_parts[3])
     
-        # If flank_right is NULL, set it to be equal to flank_left
-        if (is.null(flank_right)) {
-        flank_right <- flank_left}
+    printf("chr: %s  start: %d  end: %d\n", chr, start, end)
+    # If flank_right is NULL, set it to be equal to flank_left
+    if (is.null(flank_right)) {
+    flank_right <- flank_left}
 
     # Calculate the flanked coordinates
     flanked_start <- start - flank_left
     flanked_end <- end + flank_right
     
-    # Create a temporary file with the region of interest using bedtools intersect
-    temp_file <- tempfile(fileext = ".bed")
-    temp_region_file <- "temp_region.bed"
-    
+    # Create a temporary file in /tmp/ with the region of interest using bedtools intersect
+    # Ensure ./tmp directory exists
+    if (!dir.exists(tmp_dir)) {
+    dir.create(tmp_dir)
+    }
+
+    # Create temporary file paths inside ./tmp
+    temp_file <- tempfile(tmpdir = tmp_dir, fileext = ".bed")
+    temp_region_file <- file.path(tmp_dir, "temp_region.bed")
+
     # Construct the BED format string and write to file
-    region_bed <- paste(chr, flanked_start, flanked_end, sep="\t")
+    region_bed <- paste(chr, flanked_start, flanked_end, sep = "\t")
     writeLines(region_bed, temp_region_file)
-    
+
     # Use bedtools to intersect and create a new BED file with only the region of interest
     system(paste(bedtools_path, "intersect -a", bed_file, "-b", temp_region_file, ">", temp_file))
-    
+
     # Import the filtered BED file
-    filtered_data <- import(temp_file, format = "BED")
-    
+    filtered_data <- rtracklayer::import(temp_file, format = "BED")
+
     # Clean up temporary files
-    file.remove(temp_region_file)
-    file.remove(temp_file)
+    #file.remove(temp_region_file)
+    #file.remove(temp_file)
+
     
     # Convert to GRanges object
     region <- GRanges(
@@ -220,4 +230,28 @@ bed_region <- function(region_string=NULL,
     return(filtered_data)
 }
 
+# --------------------------------------------------
+spacing <- function(df) {
+    #--------------------------------------------------
+    #' adding spaceing between genomics region
 
+    #--------------------------------------------------
+    n <- nrow(df) 
+    # Define the spacing based on steps of 5
+    if (n >= 1 && n <= 100) {
+    # calculate which 5-unit range n falls into
+    range_idx <- ceiling(n / 5)  
+
+    # Assign spacing based on a progression
+    # Example: Start at 0.5, increase by 0.25 every 5 rows
+    base_spacing <- 0.25 * (range_idx - 1) + 0.5
+
+    # Cap spacing at a reasonable maximum, e.g., 5
+    spacing <- pmin(base_spacing, 5)
+    } else {
+    spacing <- c(NA, NA)  # Outside 1-100 range
+    message(" Reduce number of genes in the region")
+    }
+
+    return(spacing)
+}

@@ -6,7 +6,7 @@
 
 
 library(ggplot2)
-
+library(rtracklayer)
 
 # """
 # bigWig file processing and plotting
@@ -56,7 +56,7 @@ if (smooth) {
     p <- p + geom_smooth(aes(color = .data[[feature1]], 
                             fill = .data[[feature1]]), 
                          method = "loess", span = span, 
-                         size = 1.5, 
+                         size = 0.75, 
                          level = level, 
                          alpha = 0.75, 
                          se = se)
@@ -73,7 +73,8 @@ if (smooth) {
     coord_cartesian(ylim = c(0, ceiling(max(data$score, na.rm = TRUE) / 500) * 500)) +
     facet_wrap(as.formula(paste("~", feature2)), ncol = 1) +
     geom_vline(xintercept = vline_values, linetype = "dashed", color = "red") +
-    theme_minimal()
+    theme_minimal() +
+    theme(axis.text.x = element_blank())
   # Customize legend based on se
   # Customize legend based on smooth and se, with alpha = 1
   if (!smooth) {
@@ -86,9 +87,9 @@ if (smooth) {
   # Message: Saving the plot
   message("Saving the plot to the specified directory.")
   
-  # Save the plot
-  ggsave(paste0(figure_dir, file_name), 
-         plot = p, bg = 'white', height = 10, width = 16.2, dpi = 320)
+  # # Save the plot
+  # ggsave(paste0(figure_dir, file_name), 
+  #        plot = p, bg = 'white', height = 10, width = 16.2, dpi = 320)
   
   # Message: Plotting completed
   message("Plotting completed. Plot saved.")
@@ -217,7 +218,8 @@ isoform_mapping <- function(isoform,
 # plot_isoform_map --------------------------------------------------
 plot_isoform_map <- function(bed, 
                             block_df, 
-                            arrow_df, region_pad = 2000) {
+                            arrow_df, 
+                            region_pad = 2000) {
     #--------------------------------------------------
     #' plot Isoform containing exons and arrows
     #'
@@ -259,11 +261,14 @@ plot_isoform_map <- function(bed,
 
       # axis coordinates
       xlim(min(bed$start) - region_pad, max(bed$end) + region_pad) + 
-      ylim(-1, max(bed$y_line) + 2) + 
+      ylim(0.25, max(bed$y_line) + 0.75) + 
 
       # remove plot labels
-      labs(title = NULL, x = NULL, y = NULL) +  
-      theme_classic()
+      labs(title = NULL, x = "Genomic Position", y = NULL) +  
+      theme_classic() +
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.line.y = element_blank())
 
     return(p)
 }

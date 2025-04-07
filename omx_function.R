@@ -1,17 +1,22 @@
-check_load <- function(pkg) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    message(paste("Package", pkg, "is not installed. Installing now..."))
-    install.packages(pkg, dependencies = TRUE)
-  }
-  
-  # Load the package silently
-  suppressPackageStartupMessages(library(pkg, character.only = TRUE))
-  message(paste("Package", pkg, "loaded successfully."))
-}
+##############################
+# 2024 - XQ - LUMC
+# DEG analysis
+##############################
 
-# Custumize function for DEseq2 and PCA
-#check_load('docstring')
-check_load('ggplot2')
+# check_load <- function(pkg) {
+#   if (!requireNamespace(pkg, quietly = TRUE)) {
+#     message(paste("Package", pkg, "is not installed. Installing now..."))
+#     install.packages(pkg, dependencies = TRUE)
+#   }
+  
+#   # Load the package silently
+#   suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+#   message(paste("Package", pkg, "loaded successfully."))
+# }
+
+# # Custumize function for DEseq2 and PCA
+# #check_load('docstring')
+library('ggplot2')
 
 #--------------------------------------------------
 # return annotation UP and Down genes from DEseq2

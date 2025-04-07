@@ -93,6 +93,8 @@ bar_plot <- function(
 #--------------------------------------------------
 # Making heatmap
 colour.hm <- c(brewer.pal(9,'Blues')[9:3],brewer.pal(9,'Reds')[3:9])
+ht_opt$message = FALSE
+
 heatmap_cm <- function(
                 object,
                 hm_setting = 'hm_setting',
@@ -109,7 +111,8 @@ heatmap_cm <- function(
                 show_column_names = FALSE,
                 show_row_names = FALSE,
                 kmeans = 1,
-                cluster = FALSE  # New parameter
+                cluster = FALSE,
+                use_raster = TRUE 
                 ){
     
     #--------------------------------------------------
@@ -131,6 +134,7 @@ heatmap_cm <- function(
     #' @param show_row_names row names
     #' @param kmeans number of k-means clusters
     #' @param cluster logical, whether to return row clusters
+    #' @param use_raster suppress the message and create the heatmap
     #'
     #' @return heatmap object (and optionally row clusters if cluster = TRUE)
     #--------------------------------------------------
@@ -144,7 +148,10 @@ heatmap_cm <- function(
       } else {
       ntop <- ntop  # Set ntop to 2000 if it's 2000 or more
       }
-    
+    # 
+    if (!ht_opt$message) message('suppress message')
+
+
     row_var <- matrixStats::rowVars(object)   # calculate the variance for each gene
     top1_var <- order(row_var, decreasing=TRUE)[1:ntop]  # select the ntop genes by variance
     vsd_hm <- object[top1_var,]

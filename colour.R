@@ -8,7 +8,6 @@
 # --------------------------------------------------
 library(RColorBrewer)
 # global varibles
-
 colours <- c("#1D263B","#E03E3E","#53BB79","#EF8228","#937264",
             "#3043A2","#C25D7B","#D88C4C","dodgerblue","#FEB447",
             "#06CDE0","#1498BE","#0D5B11", '#4c00b0', '#ffaf00')

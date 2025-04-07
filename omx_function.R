@@ -42,50 +42,47 @@ deg <- function(
     return(df_de)
 }
 
-# Plot a volcano plot
-volcano <- function(
-                df_de, 
-                setting = 'add_titles',
-                title = NULL,
-                fig_dir = NULL,
-                height=8,
-                width=7){
-    #--------------------------------------------------
-    #' Plot volcano
-    #'
-    #' Ploting volcano for DEseq from deg function
-    #'
-    #' @param df_de dataframe from DEseq2 results
-    #' @param setting file title of the plot
-    #' @param title title of the plot
-    #'
-    #' @return dataframe with annotation of UP and DOWN genes
-    #--------------------------------------------------    
-    if (is.null(title)) {title <- setting}
-    plot_vol <- ggplot(data=df_de, aes(x=log2FoldChange, y=-log10(padj), col=.data[['deg']])) + 
-        geom_point() + 
-        ggtitle(title)+
-        theme_minimal()
-    
-    if (is.null(fig_dir)) {
-            message("Not saving volcano figure...")
-        } else {
-            message("Saving volcano figure...")
-            # Plot
-            ggsave(paste0(fig_dir, setting, '_volcano.png'),
-                plot=plot_vol, bg = "white", width=width, height=height, units="in", dpi= 600)
-        }
-  return(plot_vol)
+
+# Merge function --------------------------------------------------
+merge_func <- function(
+    df_1,
+    df_2,
+    merge_by = "row.names",
+    sort_column = "log2FoldChange",
+    sort_decreasing = TRUE
+) {
+  #'
+  #' Merge two data frames with sorting
+  #'
+  #' Merges two data frames by a specified column and sorts by another column
+  #'
+  #' @param df_1 First input data frame
+  #' @param df_2 Second input data frame
+  #' @param merge_by Column name to merge by (default: "row.names")
+  #' @param sort_column Column name to sort by (default: "log2FoldChange")
+  #' @param sort_decreasing Boolean for descending sort (default: TRUE)
+  #'
+  #' @return Merged and sorted data frame
+  #'
+  
+  df_1 <- as.data.frame(df_1)
+  df_2 <- as.data.frame(df_2)
+  
+  # Merge the data frames
+  df_merge <- merge(df_1, df_2, by = merge_by)
+  
+  # Sort the merged data frame
+  if (!sort_column %in% colnames(df_merge)) {
+    stop("The sort_column does not exist in the merged data frame.")
+  }
+  df_merge <- df_merge[order(df_merge[[sort_column]], 
+                             decreasing = sort_decreasing), ]
+  
+  return(df_merge)
 }
 
 
-#--------------------------------------------------
-
-# colours <- c("#1D263B","#E03E3E","#53BB79","#EF8228","#937264",
-#             "#3043A2","#C25D7B","#D88C4C","dodgerblue","#FEB447",
-#             "#06CDE0","#1498BE","#0D5B11", '#4c00b0', '#ffaf00')
-
-# PCA analysis
+# PCA analysis --------------------------------------------------
 pca_analysis <- function(
                   mtx,
                   pca_setting = NULL,

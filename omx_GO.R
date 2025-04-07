@@ -1,19 +1,28 @@
+##############################
+# april - XQ - LUMC
+# GO analysis
+##############################
 
-# GO plot--------------------------------------------------
-create_go_plot <- function(setting, 
+
+# go_analysis--------------------------------------------------
+go_analysis <- function(setting, 
                            ont, 
                            DEup = NULL, 
                            DEdown = NULL, 
                            figure_dir = "figures/",
                            pvalueCutoff = 0.05,
-                           qvalueCutoff = 0.05) {
-  # Load required libraries (commented out as before)
-  # library(org.Hs.eg.db)
-  # library(clusterProfiler)
-  # library(ggplot2)
-  # library(dplyr)
+                           qvalueCutoff = 0.05,
+                           go_id = TRUE) {
+
+  if (is.null(DEup) && is.null(DEdown)) stop("Provide at least one UP or DOWN list")
+  if (!is.null(DEup) && !is.character(DEup)) stop("Provide UP as character vector")
+  if (!is.null(DEdown) && !is.character(DEdown)) stop("Provide DOWN as character vector")
+
+  ontology <- c(MF = "Molecular Function",
+                CC = "Cellular Component",
+                BP = "Biological Process")
   
-  print(paste0('Running: ', setting, '_', ont))
+  message(paste0('Running ', ontology[[ont]], ' for: ', setting))
   
   # Initialize empty data frames
   go_data_up <- data.frame()
@@ -21,16 +30,20 @@ create_go_plot <- function(setting,
   
   # Perform GO enrichment for upregulated genes if provided
   if (!is.null(DEup)) {
-    goDEMF <- enrichGO(DEup,
+    goDEMF_up <- enrichGO(DEup,
                        org.Hs.eg.db,
                        keyType = "SYMBOL",
                        ont = ont,
                        pvalueCutoff = pvalueCutoff,
                        pAdjustMethod = "fdr",
                        qvalueCutoff = qvalueCutoff)
-    go_data_up <- as.data.frame(goDEMF)
+  if (is.null(goDEMF_up)) {
+    message("No UP GO terms found.")
+  } else {
+    go_data_up <- as.data.frame(goDEMF_up)
     go_data_up$GeneRatio <- sapply(go_data_up$GeneRatio, function(x) eval(parse(text = x)))
     go_data_up$Regulation <- "Upregulated"
+  }
   }
   
   # Perform GO enrichment for downregulated genes if provided
@@ -42,15 +55,19 @@ create_go_plot <- function(setting,
                             pvalueCutoff = pvalueCutoff,
                             pAdjustMethod = "fdr",
                             qvalueCutoff = qvalueCutoff)
+    if (is.null(goDEMF_down)) {
+    message("No DOWN GO terms found.")
+  } else {
     go_data_down <- as.data.frame(goDEMF_down)
     go_data_down$GeneRatio <- sapply(go_data_down$GeneRatio, function(x) eval(parse(text = x)))
     go_data_down$Regulation <- "Downregulated"
     go_data_down$GeneRatio <- -go_data_down$GeneRatio  # Negative for leftward bars
   }
-  
-  # Check if we have any data
+  }
+    
+    # Check if we have any data
   if (nrow(go_data_up) == 0 && nrow(go_data_down) == 0) {
-    stop("No data provided. Please include at least one of DEup or DEdown.")
+    stop("No GO term found. Considering increase the pvalueCutoff and pvalueCutoff")
   }
   
   # Combine the top 10 from each dataset (if they exist)
@@ -63,24 +80,35 @@ create_go_plot <- function(setting,
   }
   combined_data <- combined_data %>% filter(Count != "NA")
   
-  # Function to format scientific notation
-  format_scientific <- function(x) {
-    sci <- format(x, scientific = TRUE)
-    coef <- as.numeric(sub("e.*", "", sci))
-    exp <- as.numeric(sub(".*e", "", sci))
-    sprintf("%g x 10^{%d}", coef, exp)
+  # add go id:
+  if (go_id) {
+    combined_data$Description <- paste0(combined_data$Description, ' (', combined_data$ID, ')')
   }
-  
+
+  # Function to format scientific notation
+  format_scientific_expr <- function(x) {
+  sci <- format(x, scientific = TRUE)
+  coef <- as.numeric(sub("e.*", "", sci))
+  exp <- as.numeric(sub(".*e", "", sci))
+  parse(text = sprintf("%g %%*%% 10^%d", coef, exp))
+  }
+
   # Create the plot
   plot_goterm <- ggplot(combined_data, aes(x = GeneRatio, y = reorder(Description, GeneRatio), fill = p.adjust)) +
     geom_bar(stat = "identity") +
     geom_text(aes(label = Count, hjust = ifelse(Regulation == "Upregulated", -0.2, 1.2)), 
               size = 3.5, color = "black") +
-    scale_fill_gradientn(colors = c('#08519C', '#9ECAE1'), name = "Adjusted P-value",
-                         labels = function(x) sapply(x, format_scientific),
-                         guide = guide_colorbar(label.hjust = 0.5,
-                                                label.theme = element_text(size = 10))) +
-    labs(title = paste0(setting, ": GO ", ont, " : Up- vs Down -DAR"),
+    scale_fill_gradientn(
+      colors = c('#08519C', '#9ECAE1'),
+      name = "Adjusted P-value",
+      labels = function(x) sapply(x, format_scientific_expr),
+      guide = guide_colorbar(
+        label.hjust = 0.5,
+        label.theme = element_text(size = 10)
+      )
+    ) +
+
+    labs(title = paste0(setting, ": GO-DAR ", ontology[[ont]]),
          x = "Gene Ratio",
          y = "GO Terms") +
     theme_minimal() +
@@ -109,7 +137,7 @@ create_go_plot <- function(setting,
          dpi = 320)
   
   # Return the plot object
-  print(paste0('Finish: ', setting,'_', ont))
+  message(paste0('Finish ', ontology[[ont]], ' for: ', setting))
   return(plot_goterm)
 }
 

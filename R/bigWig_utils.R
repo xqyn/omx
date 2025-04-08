@@ -1,7 +1,7 @@
 # bigWig_utils.R
 # project: omx
 # april 2025 - XQ - LUMC
-# modifying genomic regions format
+# plot bigWig
 
 
 # process_bigwig --------------------------------------------------
@@ -144,6 +144,7 @@ process_bigwig <- function(bw_files,
 #' @importFrom ggplot2 coord_cartesian facet_wrap geom_vline theme_minimal theme guides guide_legend
 #' @importFrom ggplot2 element_blank ggsave
 #' @export
+
 plot_bigwig <- function(data,
                         colour_set = 'color_shade',
                         title = "chr:start-end",

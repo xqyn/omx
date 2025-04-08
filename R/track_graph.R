@@ -20,88 +20,101 @@ library(rtracklayer)
 ## Narrow Interval: Less uncertainty, tighter shading (e.g., dense data, low variability, lower level).
 
 
-# plot_bigwig --------------------------------------------------
-plot_bigwig <- function(data, 
-                        figure_dir, 
-                        file_name, 
-                        colour_set,
-                        title = "chr:start-end",
-                        feature1 = "day", 
-                        feature2 = "week", 
-                        smooth = TRUE, 
-                        vline_values = NULL,    # New parameter for vertical lines
-                        span = 0.1,             # Default span
-                        level = 0.95,           # Default confidence level
-                        se = FALSE) {           # Default for confidence interval display
-  
-  # Check if data is provided
-  if (is.null(data)) stop("Providing data is required.")
-  if (!all(c(feature1, feature2) %in% names(data))) {
-  stop("Both 'feature1' and 'feature2' must be present in the data.")
-  }
-  
-  # Message: Starting the plot creation process
-  message("Starting the plot creation process.")
-  
-  # Start the ggplot object
-  p <- ggplot(data, aes(x = start, y = score))
-  
-  p <- p + geom_point(aes(color = .data[[feature1]]), 
-                      size = 1,
-                      alpha = 0.15)
-
-  # Add geom based on smoothing choice
-if (smooth) {
-    message("Adding smoothed lines with confidence intervals.")
-    p <- p + geom_smooth(aes(color = .data[[feature1]], 
-                            fill = .data[[feature1]]), 
-                         method = "loess", span = span, 
-                         size = 0.75, 
-                         level = level, 
-                         alpha = 0.75, 
-                         se = se)
-  }
-# Message: Adding labels, scales, and faceting
-  message("Adding labels, color scales, and facet wrapping.")
-  
-  # Add labels, scales, faceting, and theme
-  p <- p +
-    labs(x = "Genomic Position", y = "Coverage", 
-         title = title) +
-    scale_color_manual(values = setNames(data[[colour_set]], data[[feature1]])) +
-    scale_fill_manual(values = setNames(data[[colour_set]], data[[feature1]])) +
-    coord_cartesian(ylim = c(0, ceiling(max(data$score, na.rm = TRUE) / 500) * 500)) +
-    facet_wrap(as.formula(paste("~", feature2)), ncol = 1) +
-    geom_vline(xintercept = vline_values, linetype = "dashed", color = "red") +
-    theme_minimal() +
-    theme(axis.text.x = element_blank())
-  # Customize legend based on se
-  # Customize legend based on smooth and se, with alpha = 1
-  if (!smooth) {
-      p <- p + guides(fill = "none", 
-                      color = guide_legend(override.aes = list(linetype = 1, 
-                      size = 3, 
-                      alpha = 1)))
-    }
-
-  # Message: Saving the plot
-  message("Saving the plot to the specified directory.")
-  
-  # # Save the plot
-  # ggsave(paste0(figure_dir, file_name), 
-  #        plot = p, bg = 'white', height = 10, width = 16.2, dpi = 320)
-  
-  # Message: Plotting completed
-  message("Plotting completed. Plot saved.")
-  
-  # Return the plot object
-  return(p)
-}
-
 
 # """
 # BED file processing and isoform mapping
 # """
+
+
+
+# bed_region --------------------------------------------------
+bed_region <- function(region_string=NULL, 
+                    flank_left=0, 
+                    flank_right=NULL, 
+                    bed_file=NULL,
+                    bedtools_path=NULL,
+                    tmp_dir = "./tmp/") {
+    
+    #--------------------------------------------------
+    #' Extract genomic region and apply flanking
+    #'
+    #' Given a  region: chr:start:end string,
+    #' applies left and right flanking, and filters BED file entries using bedtools intersect.
+    #'
+    #' @param region_string Genomic region in "chr:start-end" format
+    #' @param flank_left Number of bases to extend on the left
+    #' @param flank_right Number of bases to extend on the right
+    #' @param bedtools_path Path to the bedtools executable
+    #'
+    #' @return A GRanges object containing the filtered BED regions
+    #--------------------------------------------------
+        
+    # Check if required arguments are provided
+    if (is.null(region_string)) {
+        stop("Please provide a valid 'region_string' in the format 'chr:start-end'.")}
+    
+    if (is.null(bed_file)) {
+        stop("Please provide a valid 'bed_file' path.")}
+    
+    if (is.null(bedtools_path)) {
+        stop("Please provide the path to the 'bedtools' executable.")}
+    
+    # # Check if region_string is in the correct "chr:start-end" format
+    # region_pattern <- "^([A-Za-z0-9]+):([0-9]+)-([0-9]+)$"
+    # if (!grepl(region_pattern, region_string)) {
+    #     stop("Invalid 'region_string' format. It should be in the 'chr:start-end' format.")}
+
+    # Check if the region is a GRanges object
+    if (inherits(region_string, "GRanges")) {
+        region_string <- granges_to_string(region_string)    }
+
+    # Extract chromosome, start, and end from the input string
+    region_parts <- strsplit(region_string, ":|-")[[1]]
+    chr <- region_parts[1]
+    start <- as.numeric(region_parts[2])
+    end <- as.numeric(region_parts[3])
+    
+    # If flank_right is NULL, set it to be equal to flank_left
+    if (is.null(flank_right)) {
+    flank_right <- flank_left}
+
+    # Calculate the flanked coordinates
+    flanked_start <- start - flank_left
+    flanked_end <- end + flank_right
+    
+    # Create a temporary file in /tmp/ with the region of interest using bedtools intersect
+    # Ensure ./tmp directory exists
+    if (!dir.exists(tmp_dir)) {
+    dir.create(tmp_dir)
+    }
+
+    # Create temporary file paths inside ./tmp
+    temp_file <- tempfile(tmpdir = tmp_dir, fileext = ".bed")
+    temp_region_file <- file.path(tmp_dir, "temp_region.bed")
+
+    # Construct the BED format string and write to file
+    region_bed <- paste(chr, flanked_start, flanked_end, sep = "\t")
+    writeLines(region_bed, temp_region_file)
+
+    # Use bedtools to intersect and create a new BED file with only the region of interest
+    system(paste(bedtools_path, "intersect -a", bed_file, "-b", temp_region_file, ">", temp_file))
+
+    # Import the filtered BED file
+    filtered_data <- rtracklayer::import(temp_file, format = "BED")
+
+    # Clean up temporary files
+    #file.remove(temp_region_file)
+    #file.remove(temp_file)
+    
+    # Convert to GRanges object
+    region <- GRanges(
+        seqnames = chr,
+        ranges = IRanges(start = flanked_start, end = flanked_end)
+    )
+    
+    return(filtered_data)
+}
+
 
 # spacing_yline --------------------------------------------------
 spacing_yline <- function(df) {

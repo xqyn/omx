@@ -317,7 +317,7 @@ plot_isoform_map <- function(bed,
     ggplot2::theme(
       axis.text.y = ggplot2::element_blank(),
       axis.ticks.y = ggplot2::element_blank(),
-      axis.line.y = ggplot2::element_blank()
-    )
+      axis.line.y = ggplot2::element_blank(),
+      legend.position = "none")
   return(p)
 }

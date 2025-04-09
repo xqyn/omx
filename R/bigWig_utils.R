@@ -98,6 +98,7 @@ process_bigwig <- function(bw_files,
 
 
 # --------------------------------------------------
+library(dplyr)
 #' Plot BigWig data with customizable features
 #'
 #' This function generates a ggplot2-based visualization of BigWig data, displaying coverage
@@ -111,6 +112,7 @@ process_bigwig <- function(bw_files,
 #' @param title Character string for the plot title (default: "chr:start-end").
 #' @param feature_1 Character string naming the column in \code{data} for color grouping (default: "day").
 #' @param feature_2 Character string naming the column in \code{data} for faceting (default: "week").
+#' @param expand_rows Logical indicating whether to expand rows based on width (default: FALSE).
 #' @param smooth Logical indicating whether to add smoothed lines with \code{geom_smooth} (default: \code{TRUE}).
 #' @param span Numeric value controlling the smoothness of the \code{loess} fit when \code{smooth = TRUE} (default: 0.1).
 #' @param level Numeric value between 0 and 1 specifying the confidence level for smoothed intervals (default: 0.95).
@@ -143,6 +145,7 @@ process_bigwig <- function(bw_files,
 #' @importFrom ggplot2 ggplot aes geom_point geom_smooth labs scale_color_manual scale_fill_manual
 #' @importFrom ggplot2 coord_cartesian facet_wrap geom_vline theme_minimal theme guides guide_legend
 #' @importFrom ggplot2 element_blank ggsave
+#' @importFrom dplyr rowwise do ungroup
 #' @export
 
 plot_bigwig <- function(data,
@@ -150,6 +153,7 @@ plot_bigwig <- function(data,
                         title = "chr:start-end",
                         feature_1 = "day",
                         feature_2 = "week",
+                        expand_rows = FALSE,
                         smooth = TRUE,
                         span = 0.1,
                         level = 0.95,
@@ -167,13 +171,28 @@ plot_bigwig <- function(data,
     # Check if data is provided and features exist
     if (is.null(data)) stop("Providing data is required.")
     if (!all(c(feature_1, feature_2) %in% names(data))) {
-        stop("Both 'feature_1' and 'feature_2' must be present in the data.")
-    }
+        stop("Both 'feature_1' and 'feature_2' must be present in the data.")}
     
     # Message: Starting the plot creation process
-    message("Starting the plot creation process.")
-   
+    message("Starting the plot creation process...")
     
+    # Expand rows if requested
+    if (expand_rows) {
+        if (!"width" %in% names(data)) stop("Data must contain a 'width' column when expand_rows = TRUE")
+        message("Expanding rows based on width...")
+        data <- data %>%
+            rowwise() %>%
+            do({
+                row <- .
+                expanded <- data.frame(
+                    start = row$start + seq(0, row$width - 1),
+                    end = row$start + seq(0, row$width - 1),
+                    width = 1
+                )
+                cbind(expanded, row[setdiff(names(row), c("start", "end", "width"))])
+            }) %>%
+            ungroup()}
+
     # Start the ggplot object
     p <- ggplot2::ggplot(data, ggplot2::aes(x = start, y = score)) +
         ggplot2::geom_point(ggplot2::aes(color = .data[[feature_1]]), 
@@ -182,26 +201,29 @@ plot_bigwig <- function(data,
     
     # Add smoothed lines if requested
     if (smooth) {
-        message("Adding smoothed lines with confidence intervals.")
+        message("Adding smoothed lines with confidence intervals...")
         p <- p + ggplot2::geom_smooth(ggplot2::aes(color = .data[[feature_1]], 
                                                    fill = .data[[feature_1]]), 
                                       method = "loess", 
                                       span = span, 
-                                      size = size_smooth, 
+                                      linewidth = size_smooth, 
                                       level = level, 
                                       alpha = alpha_smooth, 
                                       se = se)
     }
 
-    
     # Add labels, scales, faceting, vertical lines, and theme
     p <- p +
         ggplot2::labs(x = "Genomic Position", y = "Coverage", title = title) +
+        ggplot2::scale_x_continuous(labels = function(x) {
+                                    labels <- scales::comma(x * 0.001)
+                                    labels[length(labels)] <- paste0(labels[length(labels)], " Kb")
+                                    labels}) +
         ggplot2::coord_cartesian(ylim = c(0, ceiling(max(data$score, na.rm = TRUE) / 500) * 500)) +
         ggplot2::facet_wrap(stats::as.formula(paste("~", feature_2)), ncol = 1) +
         ggplot2::geom_vline(xintercept = vline_values, linetype = "dashed", color = "red") +
         ggplot2::theme_minimal() +
-        ggplot2::theme(axis.text.x = ggplot2::element_blank())
+        ggplot2::theme(axis.title.x = ggplot2::element_blank())
     
     # Add manual color scales only if colour_set is provided and valid
     if (!is.null(colour_set) && colour_set != "" && colour_set %in% names(data)) {
@@ -215,24 +237,21 @@ plot_bigwig <- function(data,
         p <- p + ggplot2::guides(fill = "none",
                                  color = ggplot2::guide_legend(override.aes = list(linetype = 1,
                                                                                    size = size_guides,
-                                                                                   alpha = alpha_guides)))
-    }
+                                                                                   alpha = alpha_guides)))}
     
     # Message: Saving the plot
-    message("Saving the plot to the specified directory.")
+    message("Saving the plot to the specified directory")
     
     # Construct file name based on smoothing
     full_file_name <- if (smooth) {
         paste(file_name, "smooth", paste0("span_", span), paste0("level_", level), sep = "_")
     } else {
-        file_name
-    }
+        file_name}
     
     # Save the plot if figure_dir is provided
     if (!is.null(figure_dir)) {
         ggplot2::ggsave(paste0(figure_dir, full_file_name, ".png"), 
-                        plot = p, bg = "white", height = 10, width = 16.2, dpi = 320)
-    }
+                        plot = p, bg = "white", height = 10, width = 16.2, dpi = 320)}
     
     # Message: Plotting completed
     message("Plotting completed.")

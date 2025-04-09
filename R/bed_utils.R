@@ -3,10 +3,6 @@
 # april 2025 - XQ - LUMC
 # plot bed graph
 
-library(ggplot2)
-library(rtracklayer)
-
-
 # spacing_yline --------------------------------------------------
 #' Calculate spacing lines for genomic isoform
 #'

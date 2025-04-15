@@ -219,3 +219,46 @@ pca_analysis <- function(
     
     return(list(pca = pca, var = var, attri = attri, attri_ori = attri_ori, loadings = loadings))  
   }
+
+
+# find_percentile --------------------------------------------------
+#' ind Percentile Thresholds
+#'
+#' Calculates the threshold values for the top and bottom percentiles of a specified numeric column in a data frame.
+#'
+#' @param df A data frame containing the data to analyze.
+#' @param column A character string specifying the name of the column to analyze. Defaults to \code{"pc1"}.
+#' @param threshold A numeric value between 0 and 1 specifying the percentile threshold (as a decimal) for both the top and bottom percentiles. Defaults to \code{0.1} (10\%).
+#'
+#' @return A named numeric vector with two elements: \code{bottom} (the value at the specified lower percentile) and \code{top} (the value at the specified upper percentile).
+#'
+#' @examples
+#' \dontrun{
+#'   df <- data.frame(pc1 = rnorm(100))
+#'   thresholds <- find_percentile(df, column = "pc1", threshold = 0.1)
+#'   print(thresholds)
+#' }
+#'
+#' @export
+find_percentile <- function(df, 
+                            column = "pc1", 
+                            threshold = 0.1) {
+  # Validate inputs
+  if (!is.data.frame(df)) stop("Input must be a data frame.")
+  if (!column %in% names(df)) stop("Specified column not found in the data frame.")
+  if (!is.numeric(df[[column]])) stop("Specified column must contain numeric data.")
+  if (!is.numeric(threshold) || threshold <= 0 || threshold >= 1) {
+    stop("Threshold must be a numeric value between 0 and 1.")
+  }
+
+  # sort the column values
+  sorted_values <- sort(df[[column]])
+
+  # calculate thresholds
+  n <- length(sorted_values)
+  bottom_th <- sorted_values[ceiling(n * threshold)]
+  top_th <- sorted_values[floor(n * (1 - threshold))]
+
+  # return thresholds as a named vector
+  return(c(bottom = bottom_th, top = top_th))
+}

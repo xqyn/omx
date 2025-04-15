@@ -5,7 +5,7 @@ library(ggplot2)
 # Function to quickly save a ggplot object for checking
 sp <- function(plot,
                figure_dir = "./figure/testing/",   
-               filename = 'testing', 
+               filename = 'test', 
                width = 10, height = 5, dpi = 300, bg = "white") {
   # Check if the directory exists, if not, create it
   if (!dir.exists(figure_dir)) {

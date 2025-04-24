@@ -37,7 +37,7 @@ go_analysis <- function(setting,
                        pvalueCutoff = pvalueCutoff,
                        pAdjustMethod = "fdr",
                        qvalueCutoff = qvalueCutoff)
-  if (is.null(goDEMF_up)) {
+  if (is.null(goDEMF_up) || nrow(as.data.frame(goDEMF_up)) == 0) {
     message("No UP GO terms found.")
   } else {
     go_data_up <- as.data.frame(goDEMF_up)
@@ -55,7 +55,7 @@ go_analysis <- function(setting,
                             pvalueCutoff = pvalueCutoff,
                             pAdjustMethod = "fdr",
                             qvalueCutoff = qvalueCutoff)
-    if (is.null(goDEMF_down)) {
+    if (is.null(goDEMF_down || nrow(as.data.frame(goDEMF_down)) == 0)) {
     message("No DOWN GO terms found.")
   } else {
     go_data_down <- as.data.frame(goDEMF_down)
@@ -115,7 +115,7 @@ go_analysis <- function(setting,
     theme(axis.text.y = element_text(size = 10, face = "bold"),
           axis.text.x = element_text(size = 10),
           plot.title = element_text(hjust = 0.5, size = 14, face = "bold")) +
-    coord_cartesian(xlim = c(min(combined_data$GeneRatio) * 1.2, max(combined_data$GeneRatio) * 1.2)) +
+    coord_cartesian(xlim = c(min(combined_data$GeneRatio) * .75, max(combined_data$GeneRatio) * 1.25)) +
     geom_vline(xintercept = 0, color = "black", linetype = "longdash")
   
   # Add annotations only if both up and down data are present

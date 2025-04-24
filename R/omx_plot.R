@@ -111,7 +111,7 @@ heatmap_cm <- function(
                 show_column_names = FALSE,
                 show_row_names = FALSE,
                 kmeans = 1,
-                cluster = FALSE,
+                #cluster = FALSE,
                 use_raster = TRUE 
                 ){
     
@@ -133,7 +133,7 @@ heatmap_cm <- function(
     #' @param show_column_names columnnames
     #' @param show_row_names row names
     #' @param kmeans number of k-means clusters
-    #' @param cluster logical, whether to return row clusters
+    ##' @param cluster logical, whether to return row clusters
     #' @param use_raster suppress the message and create the heatmap
     #'
     #' @return heatmap object (and optionally row clusters if cluster = TRUE)
@@ -204,8 +204,8 @@ heatmap_cm <- function(
         message("Not saving figures")
     }
     
-    # If cluster = TRUE, compute and return row clusters as a table
-    if (cluster) {
+    # If cluster_rows = TRUE, compute and return row clusters as a table
+    if (cluster_rows) {
         row_clusters <- row_order(plot_vsd_hm)
         row_names <- rownames(vsd_hm_scale)
         # Create a data frame: row names and their cluster assignments

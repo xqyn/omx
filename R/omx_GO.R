@@ -87,7 +87,6 @@ go_enrichment <- function(genes = NULL,
   if (regulation == "Downregulated") {
     go_data$GeneRatio <- -go_data$GeneRatio  # Negative for leftward bars
   }
-  
   return(go_data)
 }
 
@@ -98,8 +97,8 @@ go_enrichment <- function(genes = NULL,
 #' Combines the top GO terms from up- and down-regulated gene datasets, filters out invalid counts,
 #' and optionally appends GO IDs to term descriptions.
 #'
-#' @param go_up dataframe containing GO enrichment results for up-regulated genes.
-#' @param go_down dataframe containing GO enrichment results for down-regulated genes.
+#' @param go_up dataframe containing GO enrichment results for up-regulated genes. (from go_enrichment)
+#' @param go_down dataframe containing GO enrichment results for down-regulated genes. (from go_enrichment)
 #' @param ont character string specifying the GO ontology ("MF", "CC", or "BP").
 #' @param top top GO-term to be plotted. (Default: 10).
 #' @param go_id nogical indicating whether to append GO IDs to term descriptions in the plot.
@@ -107,11 +106,17 @@ go_enrichment <- function(genes = NULL,
 #' @return A data frame combining the top GO terms from both datasets, 
 #'         with filtered counts and optional GO IDs.
 
-combine_go_data <- function(go_up = go_up,
-                            go_down = go_down, 
+combine_go_data <- function(go_up = NULL,
+                            go_down = NULL, 
                             ont = 'MF',
                             top = 10, 
                             go_id = TRUE) {
+  
+  # if input is NULL, replace as empty data frame
+  if (is.null(go_up)) go_up <- data.frame()
+  if (is.null(go_down)) go_down <- data.frame()
+
+  # if both is empty, return empty
   if (nrow(go_up) == 0 && nrow(go_down) == 0) {
     warning(paste0("No GO term found in ", ontology[[ont]], " for both GO up and down."))
     message("Consider increasing the pvalueCutoff and qvalueCutoff")
@@ -133,6 +138,141 @@ combine_go_data <- function(go_up = go_up,
 }
 
 
+# --- plot_go_terms
+#' Plot GO Terms as a Bar Plot
+#'
+#' Creates a bar plot to visualize the top Gene Ontology (GO) terms from enrichment analysis.
+#'
+#' @param go_combine Data frame with GO enrichment results, including columns for GeneRatio, Description, p.adjust, Count, and Regulation.
+#' @param setting Character string for plot title and file naming (default: "go_analysis").
+#' @param ont Character string specifying GO ontology: "MF" (Molecular Function), "CC" (Cellular Component), or "BP" (Biological Process) (default: "MF").
+#' @param pvalueCutoff Numeric p-value cutoff for file naming (default: 0.05).
+#' @param qvalueCutoff Numeric q-value cutoff for file naming (default: 0.05).
+#' @param GeneRatio Character string specifying the column name for GeneRatio values (default: "GeneRatio").
+#' @param figure_dir Directory to save the plot; if NULL, the plot is not saved (default: NULL).
+#' @param width Plot width in inches (default: 10).
+#' @param height Plot height in inches (default: 7).
+#'
+#' @return A ggplot2 object representing the GO enrichment results as a bar plot.
+#'
+#' @importFrom ggplot2 ggplot aes geom_bar geom_text scale_fill_gradientn labs theme_minimal
+#' @importFrom ggplot2 theme coord_cartesian geom_vline annotate guide_colorbar element_text
+#' @importFrom ggplot2 ggsave
+#'
+#' @examples
+#' \dontrun{
+#' plot_go_terms(go_combine, setting = "go_analysis", ont = "BP", figure_dir = "./plots/")
+#' }
+
+plot_go_terms <- function(go_combine,
+                        setting = 'go_analysis',
+                        ont = 'MF',
+                        pvalueCutoff = 0.05,
+                        qvalueCutoff = 0.05,
+                        GeneRatio = "GeneRatio",
+                        figure_dir = NULL,
+                        width = 10,
+                        height = 7) {
+  
+  # check required columns in go_combine
+  required_columns <- c(GeneRatio, "Description", "p.adjust", "Count", "Regulation")
+  missing_columns <- setdiff(required_columns, colnames(go_combine))
+  if (length(missing_columns) > 0) {
+    stop("go_combine is missing required columns: ", paste(missing_columns, collapse = ", "))
+  }
+  
+  # calculate max and min for GeneRatio x-axis
+  max_gene_ratio <- max(go_combine[[GeneRatio]])
+  min_gene_ratio <- min(go_combine[[GeneRatio]])
+  max_gene_ratio <- ceiling(max_gene_ratio * 100) / 100 # Round up to nearest 0.01
+  min_gene_ratio <- floor(min_gene_ratio * 100) / 100   # Round down to nearest 0.01
+  
+  # setting range for x-axis for GeneRatio + remove 0 for visually favor
+  range_x_axis <- seq(min_gene_ratio, max_gene_ratio, by = 0.01)
+  range_x_axis <- range_x_axis[range_x_axis != 0]
+
+  # setting breaks for p-value legend
+  min_p_adjust <- min(go_combine[["p.adjust"]])
+  min_exponent <- floor(log10(min_p_adjust) / 2) * 2
+  breaks_exponents <- seq(min_exponent, -2, by = 2)
+  breaks <- 10^breaks_exponents
+
+  # plot
+  plot_goterm <- ggplot2::ggplot(
+    go_combine, 
+    ggplot2::aes(
+      x = .data[[GeneRatio]], 
+      y = reorder(Description, .data[[GeneRatio]]),
+      fill = p.adjust)) +
+    ggplot2::geom_bar(stat = "identity") +
+    
+    # text for count on top of bar
+    ggplot2::geom_text(ggplot2::aes(
+      label = Count,
+      hjust = ifelse(Regulation == "Upregulated", -0.2, 1.2)),
+      size = 3.5, 
+      color = "black") +
+
+    # scaling for colour and legend for adj p-value
+    ggplot2::scale_fill_gradientn(
+      colors = c('#05474A', '#8CD0D5'), #colors = c('#08519C', '#9ECAE1'),
+      name = paste0(setting, ": ",  "\n", ontology[[ont]], "\n", "adj P-value"),
+      labels = function(x) sapply(x, format_scientific_expr),
+      trans = "log10",  
+      breaks = breaks,
+      limits = range(go_combine$p.adjust),
+      guide = ggplot2::guide_colorbar(
+        label.hjust = 0.5,
+        label.theme = ggplot2::element_text(size = 8),
+        barheight = 8    # bar height
+        #nbin = 100
+        )) +    # resolution of the color bar
+    
+    # setting scale for x-axis for GeneRatio
+    ggplot2::coord_cartesian(
+      xlim = c(if (min(go_combine[[GeneRatio]]) < 0) min(go_combine[[GeneRatio]]) * 1.25 else 0,
+               if (max(go_combine[[GeneRatio]]) > 0) max(go_combine[[GeneRatio]]) * 1.25 else 0)) +
+    ggplot2::scale_x_continuous(labels = abs, breaks = range_x_axis) +
+
+    # coordinate information
+    ggplot2::geom_vline(xintercept = 0, color = "black", linetype = "longdash") +
+    ggplot2::labs(#title = paste0(setting, ": ", ontology[[ont]]),
+                  x = "Gene Ratio",
+                  y = "GO Terms") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(size = 10, angle = 45, vjust = 0.5),
+      axis.ticks.x = ggplot2::element_line(size = 0.5),
+      axis.ticks.length.x = unit(0.2, "cm"),
+      axis.text.y = ggplot2::element_text(size = 10, face = "bold"),
+      plot.title = ggplot2::element_text(hjust = 0.5, size = 14, face = "bold"),
+      panel.grid = element_blank())
+    
+  # add annotation bars if GeneRatio contains both positive and negative values
+  if (any(go_combine[[GeneRatio]] > 0) && any(go_combine[[GeneRatio]] < 0)) {
+    plot_goterm <- plot_goterm +
+      ggplot2::annotate("rect", xmin = min_gene_ratio - 0.01, xmax = -0.0025, 
+                        ymin = -.85, ymax = -.15, fill = "#F48D79") +
+      ggplot2::annotate("rect", xmin = max_gene_ratio + 0.01, xmax = 0.0025, 
+                        ymin = -.85, ymax = -.15, fill = "#08519C") +
+      ggplot2::annotate("text", label = "UP", x = 0.02, y = - .5, size = 3, color = "white", fontface = "bold") +
+      ggplot2::annotate("text", label = "DOWN", x = - 0.02, y = -.5, size = 3, color = "white", fontface = "bold")
+  }
+
+  # save the plot with pv and qv in filename if figure_dir is provided
+  if (!is.null(figure_dir)) {
+    ggplot2::ggsave(paste0(figure_dir, setting, '_', ont, '_pv_', pvalueCutoff, '_qv_', qvalueCutoff, '_go_term.png'),
+                    plot = plot_goterm, 
+                    bg = 'white',
+                    width = width,
+                    height = height,
+                    units = "in",
+                    dpi = 320)
+  }
+  
+  return(plot_goterm)
+}
+
 # --- go_analysis
 #' Gene Ontology Enrichment Analysis and Visualization
 #'
@@ -147,8 +287,10 @@ combine_go_data <- function(go_up = go_up,
 #' @param pvalueCutoff numeric value for p-value cutoff for GO enrichment. (Default: 0.05).
 #' @param qvalueCutoff numeric value for the q-value cutoff for GO enrichment. (Default: 0.05).
 #' @param top top GO-term to be plotted. (Default: 10).
-#' @param go_id nogical indicating whether to append GO IDs to term descriptions in the plot.
-#' @param figure_dir cirectory to save the output plot. (Default: "figures/").
+#' @param go_id logical indicating whether to append GO IDs to term descriptions in the plot.
+#' @param figure_dir directory to save the output plot. (Default: "figures/").
+#' @param width Plot width in inches (default: 10).
+#' @param height Plot height in inches (default: 7).
 #'
 #' @return A ggplot2 plot object representing the GO enrichment results as a bar plot.
 #'
@@ -192,7 +334,9 @@ go_analysis <- function(setting = 'go_analysis',
                         qvalueCutoff = 0.05,
                         top = 10,
                         go_id = TRUE,
-                        figure_dir = "figures/") {
+                        figure_dir = "figures/",
+                        width = 10,
+                        height = 7) {
 
   if (is.null(DEup) && is.null(DEdown)) stop("Provide at least one UP or DOWN list")
   if (!is.null(DEup) && !is.character(DEup)) stop("Provide UP as character vector")
@@ -210,21 +354,21 @@ go_analysis <- function(setting = 'go_analysis',
                         regulation = "Upregulated",
                         ont = ont, 
                         pvalueCutoff = pvalueCutoff, 
-                        qvalueCutoff)
+                        qvalueCutoff = qvalueCutoff)
   
-  go_down <- go_enrichment(DEdown,
-                        "Downregulated",
-                        ont,
-                        pvalueCutoff,
+  go_down <- go_enrichment(genes = DEdown,
+                        regulation = "Downregulated",
+                        ont = ont,
+                        pvalueCutoff = pvalueCutoff,
                         qvalueCutoff = qvalueCutoff)
 
-  # combine up and dwn go data 
+  # combine up and down go data 
   go_combine <- combine_go_data(
-                      go_up = go_up, 
-                      go_down = go_down,
-                      ont = ont, 
-                      top = top, 
-                      go_id = go_id)
+                        go_up = go_up, 
+                        go_down = go_down,
+                        ont = ont, 
+                        top = top, 
+                        go_id = go_id)
   
   # check if combined_data is empty
   if (nrow(go_combine) == 0) {
@@ -232,89 +376,17 @@ go_analysis <- function(setting = 'go_analysis',
     return(NULL)
   }
 
-  # --- plot
-  # calculate max and min for GeneRatio x-axis
-  max_gene_ratio <- max(go_combine$GeneRatio)
-  min_gene_ratio <- min(go_combine$GeneRatio)
-  max_gene_ratio <- ceiling(max_gene_ratio * 100) / 100 # Round up to nearest 0.01
-  min_gene_ratio <- floor(min_gene_ratio * 100) / 100   # Round down to nearest 0.01
-  # remove 0 for visual favor
-  range_x_axis <- seq(min_gene_ratio, max_gene_ratio, by = 0.01)[seq(min_gene_ratio, max_gene_ratio, by = 0.01) != 0]
-
-  # setting breaks for p-value legend
-  min_p_adjust <- min(go_combine$p.adjust)
-  min_exponent <- floor(log10(min_p_adjust) / 2) * 2
-  breaks_exponents <- seq(min_exponent, -2, by = 2)
-  breaks <- 10^breaks_exponents
-
-  # plot
-  plot_goterm <- ggplot2::ggplot(
-    go_combine, 
-    ggplot2::aes(
-              x = GeneRatio, 
-              y = reorder(Description, GeneRatio),
-              fill = p.adjust)) +
-    ggplot2::geom_bar(stat = "identity") +
-    
-    # text for count on top of bar
-    ggplot2::geom_text(ggplot2::aes(
-              label = Count,
-              hjust = ifelse(Regulation == "Upregulated", -0.2, 1.2)),
-              size = 3.5, 
-              color = "black") +
-
-    # scaling for colour and legend for adj p-value
-    ggplot2::scale_fill_gradientn(
-              colors = c('#05474A', '#63ABB0'), #colors = c('#08519C', '#9ECAE1'),
-              name = "adj P-value",
-              labels = function(x) sapply(x, format_scientific_expr),
-              trans = "log10",  
-              breaks = breaks,
-              guide = ggplot2::guide_colorbar(
-                label.hjust = 0.5,
-                label.theme = ggplot2::element_text(size = 8),
-                barheight = 8,    # bar height
-                nbin = 100)) +    # resolution of the color bar
-    
-    # setting scale for x-axis for GeneRatio
-    ggplot2::coord_cartesian(
-              xlim = c(if (min(go_combine$GeneRatio) < 0) min(go_combine$GeneRatio) * 1.25 else 0,
-                      if (max(go_combine$GeneRatio) > 0) max(go_combine$GeneRatio) * 1.25 else 0)) +
-    ggplot2::scale_x_continuous(labels = abs, breaks = range_x_axis) +
-
-    # coordinate information
-    ggplot2::geom_vline(xintercept = 0, color = "black", linetype = "longdash") +
-    ggplot2::labs(title = paste0(setting, ": ", ontology[[ont]]),
-              x = "Gene Ratio",
-              y = "GO Terms") +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-              axis.text.x = ggplot2::element_text(size = 10, angle = 45, vjust = 0.5),
-              axis.ticks.x = ggplot2::element_line(size = 0.5),
-              axis.ticks.length.x = unit(0.2, "cm"),
-              axis.text.y = ggplot2::element_text(size = 10, face = "bold"),
-              plot.title = ggplot2::element_text(hjust = 0.5, size = 14, face = "bold"),
-              panel.grid = element_blank())
-    
-  # add annotation bars if both up and down data are present
-  if (!is.null(DEup) && !is.null(DEdown)) {
-    plot_goterm <- plot_goterm +
-      ggplot2::annotate("rect", xmin = min_gene_ratio - 0.01, xmax = -0.0025, 
-                                ymin = -.85, ymax = -.15, fill = "#F48D79") +
-      ggplot2::annotate("rect", xmin = max_gene_ratio + 0.01, xmax = 0.0025, 
-                                ymin = -.85, ymax = -.15, fill = "#08519C") + #"#017075"
-      ggplot2::annotate("text", label = "UP", x = 0.02, y = - .5, size = 3, color = "white", fontface = "bold") +
-      ggplot2::annotate("text", label = "DOWN", x = - 0.02, y = -.5, size = 3, color = "white", fontface = "bold")
-  }
-
-  # save the plot with pv and qv in filename
-  ggplot2::ggsave(paste0(figure_dir, setting, '_', ont, '_pv_', pvalueCutoff, '_qv_', qvalueCutoff, '_go_term.png'),
-         plot = plot_goterm, 
-         bg = 'white',
-         width = 10,
-         height = 7,
-         units = "in",
-         dpi = 320)
+  # generate and save the plot
+  plot_goterm <- plot_go_terms(
+    go_combine = go_combine,
+    setting = setting,
+    ont = ont,
+    pvalueCutoff = pvalueCutoff,
+    qvalueCutoff = qvalueCutoff,
+    figure_dir = figure_dir,
+    width = width,
+    height = height
+  )
   
   # return the plot object
   message(paste0('Finish ', ontology[[ont]], ' for: ', setting))

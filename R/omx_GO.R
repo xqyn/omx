@@ -3,11 +3,13 @@
 # april 1 2025
 # update:
 #   - april 25 2025: 
-#'     - split kind-func
 #'     - add maths
+#'     - split kind-func
 #'     - add warning + control message for step
 #'     - new colourset + colour control coordination
 #'     - happy Koningsdag
+#'  - april 29 2025:
+#      - make_fill_scale
 
 
 #' @title Global ontology vector
@@ -48,8 +50,8 @@ format_scientific_expr <- function(x) {
 #' @param genes character vector of gene symbols.
 #' @param regulation character string indicating regulation direction ("Upregulated" or "Downregulated").
 #' @param ont character string specifying the GO ontology ("MF", "CC", or "BP").
-#' @param pvalueCutoff numeric value for p-value cutoff for GO enrichment. (Default: 0.05).
-#' @param qvalueCutoff numeric value for the q-value cutoff for GO enrichment. (Default: 0.05).
+#' @param pvalueCutoff numeric value for p-value cutoff for GO enrichment. (default: 0.05).
+#' @param qvalueCutoff numeric value for the q-value cutoff for GO enrichment. (default: 0.05).
 #'
 #' @return A data frame with processed GO enrichment results or an empty data frame if no terms are found.
 #'
@@ -100,7 +102,7 @@ go_enrichment <- function(genes = NULL,
 #' @param go_up dataframe containing GO enrichment results for up-regulated genes. (from go_enrichment)
 #' @param go_down dataframe containing GO enrichment results for down-regulated genes. (from go_enrichment)
 #' @param ont character string specifying the GO ontology ("MF", "CC", or "BP").
-#' @param top top GO-term to be plotted. (Default: 10).
+#' @param top top GO-term to be plotted. (default: 10).
 #' @param go_id nogical indicating whether to append GO IDs to term descriptions in the plot.
 #'
 #' @return A data frame combining the top GO terms from both datasets, 
@@ -138,20 +140,77 @@ combine_go_data <- function(go_up = NULL,
 }
 
 
+# ---make_fill_scale
+#' Create a ggplot2 fill scale with log10-transformed p-values and optional custom breaks
+#'
+#' This function generates a `scale_fill_gradientn()` object with a log10 color scale,
+#' customized labels, limits, and colorbar appearance for visualizing adjusted p-values.
+#' If a valid `breaks` vector is provided (length ≥ 2), it is added to the scale;
+#' otherwise, breaks are omitted and ggplot2 defaults are used.
+#'
+#' @param breaks numeric vector of break points for the fill scale (e.g., log10 p-value thresholds).
+#'               If NULL or fewer than two elements, no custom breaks are applied.
+#' @param setting character string for plot title and file naming (default: "go_analysis").
+#' @param ontology_name string for ontology (e.g., "BP", "MF", or "CC") shown in the legend title.
+#' @param pvals numeric vector of p-values (typically `go_combine$p.adjust`) used to set scale limits.
+#' @param pvalueCutoff numeric p-value cutoff for file naming (default: 0.05).
+#' @param qvalueCutoff numeric q-value cutoff for file naming (default: 0.05).
+
+#' @return A `ggplot2` scale object (`scale_fill_gradientn`) that can be added to a plot.
+#'
+#' @examples
+#' # ased inside a ggplot2 plot
+#' ggplot(data, aes(x, y, fill = p.adjust)) +
+#'   geom_bar(stat = "identity") +
+#'   make_fill_scale(breaks, "Treatment A", "BP", data$p.adjust)
+
+make_fill_scale <- function(breaks, setting, ontology_name, pvals, 
+                            pvalueCutoff = 0.05, qvalueCutoff = 0.05) {
+  base_args <- list(
+    colors = c('#05474A', '#8CD0D5'),
+    name = paste0(
+      setting, ": ", "\n",
+      ontology_name, "\n",
+      "(p_value < ", pvalueCutoff, "\n",
+      " q_value < ", qvalueCutoff, ")", "\n",
+      "\n",
+      "\n",
+      "adj P-value"),
+    labels = function(x) sapply(x, format_scientific_expr),
+    trans = "log10",
+    limits = range(pvals, na.rm = TRUE),
+    guide = ggplot2::guide_colorbar(
+      label.hjust = 0.5,
+      label.theme = ggplot2::element_text(size = 8),
+      barheight = 8,
+      nbin = 100)
+  )
+
+  # add breaks only if valid
+  if (!is.null(breaks) && length(breaks) >= 2) {
+    base_args$breaks <- breaks
+  }
+
+  do.call(ggplot2::scale_fill_gradientn, base_args)
+}
+
+
 # --- plot_go_terms
 #' Plot GO Terms as a Bar Plot
 #'
 #' Creates a bar plot to visualize the top Gene Ontology (GO) terms from enrichment analysis.
 #'
-#' @param go_combine Data frame with GO enrichment results, including columns for GeneRatio, Description, p.adjust, Count, and Regulation.
-#' @param setting Character string for plot title and file naming (default: "go_analysis").
-#' @param ont Character string specifying GO ontology: "MF" (Molecular Function), "CC" (Cellular Component), or "BP" (Biological Process) (default: "MF").
-#' @param pvalueCutoff Numeric p-value cutoff for file naming (default: 0.05).
-#' @param qvalueCutoff Numeric q-value cutoff for file naming (default: 0.05).
-#' @param GeneRatio Character string specifying the column name for GeneRatio values (default: "GeneRatio").
-#' @param figure_dir Directory to save the plot; if NULL, the plot is not saved (default: NULL).
-#' @param width Plot width in inches (default: 10).
-#' @param height Plot height in inches (default: 7).
+#' @param go_combine dataframe with GO enrichment results, including columns for GeneRatio, Description, p.adjust, Count, and Regulation.
+#' @param setting character string for plot title and file naming (default: "go_analysis").
+#' @param ont character string specifying GO ontology: "MF" (Molecular Function), "CC" (Cellular Component), or "BP" (Biological Process) (default: "MF").
+#' @param pvalueCutoff numeric p-value cutoff for file naming (default: 0.05).
+#' @param qvalueCutoff numeric q-value cutoff for file naming (default: 0.05).
+#' @param GeneRatio character string specifying the column name for GeneRatio values (default: "GeneRatio").
+#' @param figure_dir directory to save the plot; if NULL, the plot is not saved (default: NULL).
+#' @param width plot width in inches (default: 10).
+#' @param height plot height in inches (default: 7).
+#' @param wrap_width numeric value specifying the maximum character width for wrapping y-axis labels (default: 50).
+#' @param fig_format save the figure as which format
 #'
 #' @return A ggplot2 object representing the GO enrichment results as a bar plot.
 #'
@@ -165,17 +224,19 @@ combine_go_data <- function(go_up = NULL,
 #' }
 
 plot_go_terms <- function(go_combine,
-                        setting = 'go_analysis',
-                        ont = 'MF',
-                        pvalueCutoff = 0.05,
-                        qvalueCutoff = 0.05,
-                        GeneRatio = "GeneRatio",
-                        figure_dir = NULL,
-                        width = 10,
-                        height = 7) {
+                          setting = 'go_analysis',
+                          ont = 'MF',
+                          pvalueCutoff = 0.05,
+                          qvalueCutoff = 0.05,
+                          GeneRatio = "GeneRatio",
+                          figure_dir = NULL,
+                          width = 10,
+                          height = 7,
+                          wrap_width = 50,
+                          fig_format = c("png", "pdf")) {
   
   # check required columns in go_combine
-  required_columns <- c(GeneRatio, "Description", "p.adjust", "Count", "Regulation")
+  required_columns <- c("Description", "p.adjust", "Count", "Regulation")
   missing_columns <- setdiff(required_columns, colnames(go_combine))
   if (length(missing_columns) > 0) {
     stop("go_combine is missing required columns: ", paste(missing_columns, collapse = ", "))
@@ -188,6 +249,13 @@ plot_go_terms <- function(go_combine,
   min_gene_ratio <- floor(min_gene_ratio * 100) / 100   # Round down to nearest 0.01
   
   # setting range for x-axis for GeneRatio + remove 0 for visually favor
+  # adjust min_gene_ratio if both are positive or negative
+  if (min_gene_ratio > 0 & max_gene_ratio > 0) {
+    min_gene_ratio <- 0.01
+  } else if (min_gene_ratio < 0 & max_gene_ratio < 0) {
+    max_gene_ratio <- -0.01
+  }
+  # generate the x-axis range
   range_x_axis <- seq(min_gene_ratio, max_gene_ratio, by = 0.01)
   range_x_axis <- range_x_axis[range_x_axis != 0]
 
@@ -196,38 +264,31 @@ plot_go_terms <- function(go_combine,
   min_exponent <- floor(log10(min_p_adjust) / 2) * 2
   breaks_exponents <- seq(min_exponent, -2, by = 2)
   breaks <- 10^breaks_exponents
-
+  
   # plot
   plot_goterm <- ggplot2::ggplot(
     go_combine, 
     ggplot2::aes(
       x = .data[[GeneRatio]], 
-      y = reorder(Description, .data[[GeneRatio]]),
+      y = reorder(stringr::str_wrap(Description, width = wrap_width), 
+                  .data[[GeneRatio]]),
       fill = p.adjust)) +
     ggplot2::geom_bar(stat = "identity") +
-    
-    # text for count on top of bar
-    ggplot2::geom_text(ggplot2::aes(
-      label = Count,
-      hjust = ifelse(Regulation == "Upregulated", -0.2, 1.2)),
+    # text for count on top of bars
+    ggplot2::geom_text(
+      ggplot2::aes(label = Count),
+      hjust = ifelse(go_combine$Regulation == "Upregulated", -0.2, 1.2),
       size = 3.5, 
       color = "black") +
-
-    # scaling for colour and legend for adj p-value
-    ggplot2::scale_fill_gradientn(
-      colors = c('#05474A', '#8CD0D5'), #colors = c('#08519C', '#9ECAE1'),
-      name = paste0(setting, ": ",  "\n", ontology[[ont]], "\n", "adj P-value"),
-      labels = function(x) sapply(x, format_scientific_expr),
-      trans = "log10",  
+    # make_fill function (ggplot objects)
+    make_fill_scale(
       breaks = breaks,
-      limits = range(go_combine$p.adjust),
-      guide = ggplot2::guide_colorbar(
-        label.hjust = 0.5,
-        label.theme = ggplot2::element_text(size = 8),
-        barheight = 8    # bar height
-        #nbin = 100
-        )) +    # resolution of the color bar
-    
+      setting = setting,
+      ontology_name = ontology[[ont]],
+      pvalueCutoff = pvalueCutoff,
+      qvalueCutoff = qvalueCutoff,
+      pvals = go_combine$p.adjust
+    ) +
     # setting scale for x-axis for GeneRatio
     ggplot2::coord_cartesian(
       xlim = c(if (min(go_combine[[GeneRatio]]) < 0) min(go_combine[[GeneRatio]]) * 1.25 else 0,
@@ -242,11 +303,13 @@ plot_go_terms <- function(go_combine,
     ggplot2::theme_minimal() +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(size = 10, angle = 45, vjust = 0.5),
-      axis.ticks.x = ggplot2::element_line(size = 0.5),
-      axis.ticks.length.x = unit(0.2, "cm"),
+      axis.ticks.x = ggplot2::element_line(linewidth = 0.5),
+      axis.ticks.length.x = grid::unit(0.2, "cm"),
       axis.text.y = ggplot2::element_text(size = 10, face = "bold"),
       plot.title = ggplot2::element_text(hjust = 0.5, size = 14, face = "bold"),
-      panel.grid = element_blank())
+      panel.grid = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(10, 10, 10, 20, "mm"),
+      legend.position = "right")
     
   # add annotation bars if GeneRatio contains both positive and negative values
   if (any(go_combine[[GeneRatio]] > 0) && any(go_combine[[GeneRatio]] < 0)) {
@@ -260,16 +323,23 @@ plot_go_terms <- function(go_combine,
   }
 
   # save the plot with pv and qv in filename if figure_dir is provided
+  # fig_format <- match.arg(fig_format)
   if (!is.null(figure_dir)) {
-    ggplot2::ggsave(paste0(figure_dir, setting, '_', ont, '_pv_', pvalueCutoff, '_qv_', qvalueCutoff, '_go_term.png'),
-                    plot = plot_goterm, 
-                    bg = 'white',
-                    width = width,
-                    height = height,
-                    units = "in",
-                    dpi = 320)
+    for (ext in fig_format) {
+      filepath <- paste0(figure_dir, setting, '_', ont, 
+                        '_pv_', pvalueCutoff, 
+                        '_qv_', qvalueCutoff,
+                        '_go_term.', ext)
+      ggplot2::ggsave(filepath,
+                      plot = plot_goterm, 
+                      bg = 'white',
+                      width = width,
+                      height = height,
+                      units = "in",
+                      dpi = 320)
+      message(paste0('Saved figure to: ', filepath))
+    }
   }
-  
   return(plot_goterm)
 }
 
@@ -279,16 +349,16 @@ plot_go_terms <- function(go_combine,
 #' Performs Gene Ontology (GO) enrichment analysis for up- and/or down-regulated genes
 #' and generates a bar plot visualizing the top GO terms.
 #'
-#' @param setting character string specifying used in plot title and file naming.
+#' @param setting character string for plot title and file naming (default: "go_analysis").
 #' @param ont character string specifying GO ontology to analyze. Must be one of:
 #'   "MF" (Molecular Function), "CC" (Cellular Component), or "BP" (Biological Process).
-#' @param DEup character vector of gene symbols for up-regulated genes. (Default: NULL).
-#' @param DEdown character vector of gene symbols for down-regulated genes. (Default: NULL).
-#' @param pvalueCutoff numeric value for p-value cutoff for GO enrichment. (Default: 0.05).
-#' @param qvalueCutoff numeric value for the q-value cutoff for GO enrichment. (Default: 0.05).
-#' @param top top GO-term to be plotted. (Default: 10).
+#' @param DEup character vector of gene symbols for up-regulated genes. (default: NULL).
+#' @param DEdown character vector of gene symbols for down-regulated genes. (default: NULL).
+#' @param pvalueCutoff numeric value for p-value cutoff for GO enrichment. (default: 0.05).
+#' @param qvalueCutoff numeric value for the q-value cutoff for GO enrichment. (default: 0.05).
+#' @param top top GO-term to be plotted. (default: 10).
 #' @param go_id logical indicating whether to append GO IDs to term descriptions in the plot.
-#' @param figure_dir directory to save the output plot. (Default: "figures/").
+#' @param figure_dir directory to save the output plot. (default: "figures/").
 #' @param width Plot width in inches (default: 10).
 #' @param height Plot height in inches (default: 7).
 #'
@@ -336,7 +406,9 @@ go_analysis <- function(setting = 'go_analysis',
                         go_id = TRUE,
                         figure_dir = "figures/",
                         width = 10,
-                        height = 7) {
+                        height = 7,
+                        wrap_width = 50,
+                        fig_format = c("png", "pdf")) {
 
   if (is.null(DEup) && is.null(DEdown)) stop("Provide at least one UP or DOWN list")
   if (!is.null(DEup) && !is.character(DEup)) stop("Provide UP as character vector")
@@ -385,7 +457,8 @@ go_analysis <- function(setting = 'go_analysis',
     qvalueCutoff = qvalueCutoff,
     figure_dir = figure_dir,
     width = width,
-    height = height
+    height = height,
+    fig_format = fig_format
   )
   
   # return the plot object

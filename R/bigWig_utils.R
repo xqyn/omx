@@ -154,7 +154,7 @@ plot_bigwig <- function(data,
                         feature_1 = "day",
                         feature_2 = "week",
                         expand_rows = FALSE,
-                        smooth = TRUE,
+                        smooth = FALSE,
                         span = 0.1,
                         level = 0.95,
                         se = FALSE,
@@ -166,7 +166,8 @@ plot_bigwig <- function(data,
                         alpha_smooth = 0.75,
                         size_smooth = 0.75,
                         alpha_guides = 1,
-                        size_guides = 3) {
+                        size_guides = 3,
+                        text_size = 5) {
     
     # Check if data is provided and features exist
     if (is.null(data)) stop("Providing data is required.")
@@ -223,7 +224,12 @@ plot_bigwig <- function(data,
         ggplot2::facet_wrap(stats::as.formula(paste("~", feature_2)), ncol = 1) +
         ggplot2::geom_vline(xintercept = vline_values, linetype = "dashed", color = "red") +
         ggplot2::theme_minimal() +
-        ggplot2::theme(axis.title.x = ggplot2::element_blank())
+        ggplot2::theme(axis.title.x = ggplot2::element_blank(),
+                        axis.text.x = element_text(color = "grey20", size = text_size),
+                        axis.text.y = element_text(color = "grey20", size = text_size - 1),
+                        panel.grid = element_blank(),
+                        axis.text=element_text(size=text_size),
+                        legend.text = element_text(size=text_size))
     
     # Add manual color scales only if colour_set is provided and valid
     if (!is.null(colour_set) && colour_set != "" && colour_set %in% names(data)) {
@@ -240,7 +246,7 @@ plot_bigwig <- function(data,
                                                                                    alpha = alpha_guides)))}
     
     # Message: Saving the plot
-    message("Saving the plot to the specified directory")
+    message("Saving the plot to the specified directory...")
     
     # Construct file name based on smoothing
     full_file_name <- if (smooth) {
@@ -254,6 +260,6 @@ plot_bigwig <- function(data,
                         plot = p, bg = "white", height = 10, width = 16.2, dpi = 320)}
     
     # Message: Plotting completed
-    message("Plotting completed.")
+    message("Plotting bigWig completed.")
     return(p)
 }

@@ -246,7 +246,9 @@ isoform_mapping <- function(isoform,
 plot_isoform_map <- function(bed, 
                             block_df, 
                             arrow_df, 
-                            region_pad = 0) {
+                            region_pad = 0,
+                            text_gene = 2,
+                            text_size = 5) {
   
   # Helper function to check required columns
   check_columns <- function(df, required_cols, df_name) {
@@ -290,12 +292,12 @@ plot_isoform_map <- function(bed,
       size = 1.5,
       color = "black") +
 
-    # Gene names
+    # gene names
     ggplot2::geom_text(data = bed,
       ggplot2::aes(x = start, y = y_line, label = name),
       hjust = ifelse(bed$strand == "+", 1.15, 1.15),
       vjust = 0.5,
-      size = 2, 
+      size = text_gene, 
       color = "#0040B0") +
     
     # axis limits
@@ -315,7 +317,9 @@ plot_isoform_map <- function(bed,
     # theme adjustments
     ggplot2::theme_classic() +
     ggplot2::theme(
+      axis.text.x = element_text(color = "grey20", size = text_size),
       axis.text.y = ggplot2::element_blank(),
+      #axis.text.y = element_text(color = "grey20", size = text_size),
       axis.ticks.y = ggplot2::element_blank(),
       axis.line.y = ggplot2::element_blank(),
       legend.position = "none")

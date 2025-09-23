@@ -6,7 +6,7 @@ library(ggplot2)
 sp <- function(plot,
                figure_dir = "./figure/testing/",   
                filename = 'test', 
-               width = 10, height = 5, dpi = 300, bg = "white") {
+               width = 10, height = 7, dpi = 320, bg = "white") {
   # Check if the directory exists, if not, create it
   if (!dir.exists(figure_dir)) {
     dir.create(figure_dir, recursive = TRUE)
@@ -35,5 +35,5 @@ sp <- function(plot,
          width = width, height = height, dpi = dpi)
   
   # Print a message indicating where the plot was saved
-  message(paste("Plot saved to", file_path))
+  message(paste("plot saved to", file_path))
 }

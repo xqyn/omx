@@ -178,45 +178,44 @@ pca_analysis <- function(
     } else {
         message("Ploting PCA figures...")
         # PCA plot
-        plot_pca <- ggplot(pca, aes(x = Dim.1, y = Dim.2)) +
-                        geom_point(aes(shape=.data[[rep_title]],
+        plot_pca <- ggplot2::ggplot(pca, ggplot2::aes(x = Dim.1, y = Dim.2)) +
+                        ggplot2::geom_point(ggplot2::aes(shape=.data[[rep_title]],
                                     colour = .data[[cond_title]]), 
                                     size = 5, 
                                     alpha=0.75, 
                                     show.legend = TRUE) +
-                        labs(x = paste0("PC1: ", var$per_var[1], "%"),
+                        ggplot2::labs(x = paste0("PC1: ", var$per_var[1], "%"),
                             y = paste0("PC2: ", var$per_var[2], "%"),
                             color = cond_title,
                             shape = rep_title
                             ) +
-                        scale_color_manual(values = colour_set) + 
-                        ggtitle(paste0('PCA: ', pca_setting)) +
-                        theme_minimal()
+                        ggplot2::scale_color_manual(values = colour_set) + 
+                        ggplot2::ggtitle(paste0('PCA: ', pca_setting)) +
+                        ggplot2::theme_minimal()
         # save
-        ggsave(paste0(fig_dir, pca_setting, '_pca.png'),
+        ggplot2::ggsave(paste0(fig_dir, pca_setting, '_pca.png'),
             plot=plot_pca, bg = 'white', width=width, height=height, units="in", dpi=600)
         if (pdf == TRUE){
-        ggsave(paste0(fig_dir, pca_setting, '_pca.pdf'),
-            plot=plot_pca, bg = "white", width=width, height=height, units="in", dpi= 1200, device = cairo_pdf)
+        ggplot2::ggsave(paste0(fig_dir, pca_setting, '_pca.pdf'),
+            plot=plot_pca, bg = "white", width=width, height=height, units="in", dpi= 1200, device = grDevices::cairo_pdf)
             }
             
 
         # Varaince plot
-        plot_var <- ggplot(var, aes(x = factor(1:nrow(var)), y = per_var)) +
-                        geom_bar(stat = "identity") +
-                        labs(x = "PC", 
+        plot_var <- ggplot2::ggplot(var, ggplot2::aes(x = factor(1:nrow(var)), y = per_var)) +
+                        ggplot2::geom_bar(stat = "identity") +
+                        ggplot2::labs(x = "PC", 
                             y = "Percent variance", 
                             title = paste0("Percent varience explained: ", pca_setting)) +
-                        theme_minimal()
+                        ggplot2::theme_minimal()
         ## save
-        ggsave(paste0(fig_dir, pca_setting, '_pca_var.png'), 
+        ggplot2::ggsave(paste0(fig_dir, pca_setting, '_pca_var.png'), 
             plot=plot_var, bg = 'white', width=6.5, height=6, units="in", dpi=600)
         if (pdf == TRUE) {
-            ggsave(paste0(fig_dir, pca_setting, '_pca_var.pdf'), 
-                plot=plot_var, bg = "white", width=6.5, height=6,units="in", dpi= 1200, device = cairo_pdf)
+            ggplot2::ggsave(paste0(fig_dir, pca_setting, '_pca_var.pdf'), 
+                plot=plot_var, bg = "white", width=6.5, height=6,units="in", dpi= 1200, device = grDevices::cairo_pdf)
                 }
     }
-    
     return(list(pca = pca, var = var, attri = attri, attri_ori = attri_ori, loadings = loadings))  
   }
 

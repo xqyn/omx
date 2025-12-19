@@ -1,3 +1,4 @@
 R/dev.R
 R/archive/
 jupyter
+.DS_Store

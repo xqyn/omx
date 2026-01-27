@@ -23,27 +23,40 @@ library('ggplot2')
 deg <- function(
             df, 
             lfc = 1, 
-            padj = 0.05){
-
+            padj = 0.05,
+            lfc_col = "log2FoldChange",
+            padj_col = "padj",
+            up_label = "UP",
+            down_label = "DOWN",
+            no_de_label = "NO DE"){
+    
     #--------------------------------------------------
-    #' DEseq2 annotation
+    #' DESeq2 annotation
     #'
-    #' Return filtering of UP and DOWN genes from DEseq2 in diffexpressed columns
+    #' Classify genes as UP, DOWN, or non-differentially expressed based on 
+    #' log2 fold change and adjusted p-value thresholds
     #'
-    #' @param df dataframe from DEseq2 results
-    #' @param lfc log2FoldChange threshold
-    #' @param padj p-adjusted threshold
+    #' @param df dataframe from DESeq2 results
+    #' @param lfc log2FoldChange threshold (default: 1)
+    #' @param padj adjusted p-value threshold (default: 0.05)
+    #' @param lfc_col column name for log2FoldChange (default: "log2FoldChange")
+    #' @param padj_col column name for adjusted p-value (default: "padj")
+    #' @param up_label label for upregulated genes (default: "UP")
+    #' @param down_label label for downregulated genes (default: "DOWN")
+    #' @param no_de_label label for non-DE genes (default: "NO DE")
     #'
-    #' @return dataframe with annotation of UP and DOWN genes
+    #' @return dataframe with 'deg' column containing UP/DOWN/NO DE classifications,
+    #'         sorted by log2FoldChange (descending)
     #--------------------------------------------------
 
-    df_de <- as.data.frame(df)                      # transfer to dataframe
-    df_de <- df_de[!is.na(df_de$log2FoldChange),]   # filter lfc 
-    df_de <- df_de[!is.na(df_de$padj),]             # filter p adjusted
-    df_de$deg <- 'NO DE'                  # re-filter for no DEG
-    df_de$deg[df_de$log2FoldChange > lfc & df_de$padj < padj] <- "UP"
-    df_de$deg[df_de$log2FoldChange < -lfc & df_de$padj < padj] <- "DOWN"
-    df_de <- df_de[order(df_de$log2FoldChange, decreasing=TRUE),] 
+    df_de <- as.data.frame(df)                                # convert to dataframe
+    df_de <- df_de[!is.na(df_de[[lfc_col]]),]                # filter NA log2FoldChange
+    df_de <- df_de[!is.na(df_de[[padj_col]]),]               # filter NA adjusted p-value
+    df_de$deg <- no_de_label                                  # initialize DEG status
+    df_de$deg[df_de[[lfc_col]] > lfc & df_de[[padj_col]] < padj] <- up_label
+    df_de$deg[df_de[[lfc_col]] < -lfc & df_de[[padj_col]] < padj] <- down_label
+    df_de <- df_de[order(df_de[[lfc_col]], decreasing = TRUE),]  # sort by log2FC
+    
     return(df_de)
 }
 
